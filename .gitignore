@@ -33,4 +33,8 @@
 *.out
 *.app
 
-*/build/*
+build/*
+
+results/*.vtu
+results/*.pvtu
+.vscode/
