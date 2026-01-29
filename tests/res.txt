@@ -1,0 +1,93 @@
+ubuntu@Samu-LAPTOP build $ mpirun -np 8 ./tests/matrix_free_adr
+Vectorization over 2 doubles = 128 bits (SSE2)
+Cycle 0
+Number of degrees of freedom: 4913
+  Memory (After Setup):        Max: 148.125 MB / Min: 145.75 MB
+  Memory (After Assembly):        Max: 148.25 MB / Min: 145.875 MB
+Total setup time               (wall) 0.0714546s
+Time solve (13 iterations) (CPU/wall) 0.0042s/0.0100533s
+  Memory (After Solve):        Max: 150.875 MB / Min: 148.625 MB
+
+Cycle 1
+Number of degrees of freedom: 35937
+  Memory (After Setup):        Max: 155.25 MB / Min: 153 MB
+  Memory (After Assembly):        Max: 155.25 MB / Min: 153 MB
+Total setup time               (wall) 0.016806s
+Time solve (13 iterations) (CPU/wall) 0.009416s/0.0128394s
+  Memory (After Solve):        Max: 155.875 MB / Min: 153.75 MB
+
+Cycle 2
+Number of degrees of freedom: 274625
+  Memory (After Setup):        Max: 169.992 MB / Min: 166.617 MB
+  Memory (After Assembly):        Max: 169.992 MB / Min: 166.617 MB
+Total setup time               (wall) 0.0843442s
+Time solve (13 iterations) (CPU/wall) 0.097396s/0.103391s
+  Memory (After Solve):        Max: 173.992 MB / Min: 171.867 MB
+
+Cycle 3
+Number of degrees of freedom: 2146689
+  Memory (After Setup):        Max: 277.844 MB / Min: 266.773 MB
+  Memory (After Assembly):        Max: 277.844 MB / Min: 266.773 MB
+Total setup time               (wall) 0.622858s
+Time solve (38 iterations) (CPU/wall) 3.4389s/3.52453s
+  Memory (After Solve):        Max: 341.898 MB / Min: 338.648 MB
+
+Cycle 4
+Number of degrees of freedom: 16974593
+  Memory (After Setup):        Max: 1067.31 MB / Min: 1038.28 MB
+  Memory (After Assembly):        Max: 1067.31 MB / Min: 1038.28 MB
+Total setup time               (wall) 4.70913s
+Time solve (40 iterations) (CPU/wall) 27.6817s/28.3357s
+  Memory (After Solve):        Max: 1606.69 MB / Min: 1592.91 MB
+
+
+
+
+
+
+ubuntu@Samu-LAPTOP build $ mpirun -np 8 ./tests/matrix_based_adr
+Running Matrix-Based Benchmark (MPI, Dimension 3)
+Cycle 0
+  Number of degrees of freedom: 4913
+  Setup time:                (CPU/wall) 0.004454s/0.00439871s
+  Memory (After Setup):        Max: 144.125 MB / Min: 141.625 MB
+  Assembly time:             (CPU/wall) 0.006719s/0.00663403s
+  Memory (After Assembly):        Max: 145.375 MB / Min: 143 MB
+  Solve time (17 it):      (CPU/wall) 0.007896s/0.011585s
+  Memory (After Solve):        Max: 150.625 MB / Min: 148 MB
+
+Cycle 1
+  Number of degrees of freedom: 35937
+  Setup time:                (CPU/wall) 0.013084s/0.0169678s
+  Memory (After Setup):        Max: 157.625 MB / Min: 154.863 MB
+  Assembly time:             (CPU/wall) 0.036312s/0.0358657s
+  Memory (After Assembly):        Max: 158 MB / Min: 155.125 MB
+  Solve time (19 it):      (CPU/wall) 0.136079s/0.140042s
+  Memory (After Solve):        Max: 165.809 MB / Min: 158.227 MB
+
+Cycle 2
+  Number of degrees of freedom: 274625
+  Setup time:                (CPU/wall) 0.087824s/0.118506s
+  Memory (After Setup):        Max: 194.676 MB / Min: 190.012 MB
+  Assembly time:             (CPU/wall) 0.243869s/0.2409s
+  Memory (After Assembly):        Max: 194.676 MB / Min: 190.012 MB
+  Solve time (30 it):      (CPU/wall) 1.28063s/1.39231s
+  Memory (After Solve):        Max: 222.242 MB / Min: 213.246 MB
+
+Cycle 3
+  Number of degrees of freedom: 2146689
+  Setup time:                (CPU/wall) 0.678671s/0.867019s
+  Memory (After Setup):        Max: 485.031 MB / Min: 470.766 MB
+  Assembly time:             (CPU/wall) 1.78993s/1.77175s
+  Memory (After Assembly):        Max: 485.031 MB / Min: 470.766 MB
+  Solve time (34 it):      (CPU/wall) 12.1775s/13.2504s
+  Memory (After Solve):        Max: 712.645 MB / Min: 680.828 MB
+
+Cycle 4
+Number of degrees of freedom: 16974593
+  Memory (After Setup):        Max: N/A / Min: N/A MB
+  Memory (After Assembly):        Max: N/A MB / Min: N/A MB
+Total setup time               (wall) N/A
+Time solve (40 iterations) (CPU/wall) N/A
+  Memory (After Solve):        Max: N/A MB / Min: N/A MB
+
