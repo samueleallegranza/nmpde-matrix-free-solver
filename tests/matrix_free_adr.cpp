@@ -689,7 +689,7 @@ namespace Step37_ADR
         pcout << std::endl;
       };
   }
-} // namespace Step37_ADR
+}
 
 
 int main(int argc, char *argv[])
