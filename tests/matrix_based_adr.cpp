@@ -161,23 +161,22 @@ void MPIADRBenchmark<dim>::setup_system()
   DoFTools::make_hanging_node_constraints(dof_handler, constraints);
   VectorTools::interpolate_boundary_values(mapping,
                                            dof_handler,
-                                           0,
+                                           0, // Boundary ID
                                            Functions::ZeroFunction<dim>(),
                                            constraints);
   constraints.close();
 
-  DynamicSparsityPattern dsp(locally_relevant_dofs);
-  DoFTools::make_sparsity_pattern(dof_handler, dsp, constraints, false);
-  
-  system_matrix.reinit(locally_owned_dofs,
-                       locally_owned_dofs,
-                       dsp,
-                       mpi_communicator);
+  // Setup Matrix Sparsity (Crucial for Parallel Trilinos)
+  TrilinosWrappers::SparsityPattern sp(locally_owned_dofs, mpi_communicator);
+  DoFTools::make_sparsity_pattern(dof_handler, sp, constraints, false);
+  sp.compress();
 
-  pcout << "  Number of degrees of freedom: " << dof_handler.n_dofs() << std::endl;
+  system_matrix.reinit(sp);
+
+  pcout << "   Number of degrees of freedom: " << dof_handler.n_dofs() << std::endl;
 
   timer.stop();
-  pcout << "  Setup time:                (CPU/wall) " 
+  pcout << "   Setup time:                (CPU/wall) " 
         << timer.cpu_time() << "s/" << timer.wall_time() << "s" << std::endl;
         
   print_memory_usage("After Setup");
@@ -267,16 +266,21 @@ void MPIADRBenchmark<dim>::solve()
 {
   timer.restart();
 
-  SolverControl solver_control(1000, 1e-12 * system_rhs.l2_norm());
+  // new
+  TrilinosWrappers::PreconditionSSOR preconditioner;
+  preconditioner.initialize(system_matrix, 
+                            TrilinosWrappers::PreconditionSSOR::AdditionalData(1.0));
+
+  // ReductionControl is more robust than SolverControl 
+  // It stops when the residual is reduced by a certain factor
+  ReductionControl solver_control(10000, 1.0e-16, 1.0e-6);
+
+  // STICK WITH GMRES for ADR (Advection-Diffusion-Reaction)
+  // Using CG here will likely lead to incorrect results/divergence
   TrilinosWrappers::SolverGMRES solver(solver_control);
 
-  // Using AMG (Algebraic Multigrid) consumes significant memory for hierarchy
-  TrilinosWrappers::PreconditionAMG preconditioner;
-  TrilinosWrappers::PreconditionAMG::AdditionalData data;
-  data.smoother_sweeps = 1;
-  data.aggregation_threshold = 0.02; 
-  
-  preconditioner.initialize(system_matrix, data);
+  pcout << "  Solving the linear system" << std::endl;
+  //new
 
   solver.solve(system_matrix, solution, system_rhs, preconditioner);
 
@@ -300,7 +304,7 @@ void MPIADRBenchmark<dim>::output_results(const unsigned int cycle)
   data_out.build_patches(mapping);
 
   data_out.write_vtu_with_pvtu_record(
-    "./", "adr_bf_solution", cycle, mpi_communicator, 3);
+    "./", "adr_mb_mpi_solution", cycle, mpi_communicator, 3);
 }
 
 template <int dim>
