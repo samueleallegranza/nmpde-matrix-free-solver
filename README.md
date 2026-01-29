@@ -32,28 +32,25 @@ where:
 ## Project Structure
 
 ```
-project7/
-├── CMakeLists.txt           # Build configuration
-├── README.md                # This file
-├── parameters/
-│   └── parameters.prm       # Runtime parameters (optional)
+├── CMakeLists.txt              # Main CMake configuration
+├── cmake-common.cmake          # Common CMake settings
+├── README.md                   # This file
 ├── include/
-│   ├── matrix_free_operator.h    # Matrix-free operator class
-│   └── matrix_based_operator.h   # Matrix-based operator class
+│   ├── advection_diffusion_problem.h # Problem class header
+│   ├── matrix_based_operator.h       # Matrix-based operator class
+│   └── matrix_free_operator.h        # Matrix-free operator class
 ├── src/
-│   ├── main.cc                         # Main driver
-│   ├── advection_diffusion_problem.h   # Problem class header
-│   └── advection_diffusion_problem.cc  # Problem class implementation
-└── results/                 # Output directory (created at runtime)
+│   ├── main.cpp                      # Main driver
+│   └── advection_diffusion_problem.cpp # Problem class implementation
+├── tests/                      # Benchmarks and tests (see Testing section)
+│   ├── CMakeLists.txt
+│   ├── matrix_based_adr.cpp
+│   ├── matrix_based_adr_seq.cpp
+│   ├── matrix_free_adr.cpp
+│   └── matrix_free_poisson.cpp
+├── meshes/                     # Mesh files
+└── results/                    # Output directory
 ```
-
-## Dependencies
-
-- deal.II (version ≥ 9.5.0) compiled with:
-  - C++17 support
-  - LAPACK/BLAS
-  - Threading support (TBB or std::thread)
-  - Optional: MPI for parallel runs
 
 ## Building the Project
 
@@ -70,6 +67,34 @@ make
 
 # Run
 ./matrix_free_solver
+```
+
+## Development tests
+
+The `tests/` directory contains several benchmark and validation tests. These are built automatically when you compile the project.
+
+### Available Tests
+
+- **`matrix_free_poisson`**: Matrix-free Poisson solver. A simpler validation case ensuring the matrix-free infrastructure works correctly for the Poisson equation.
+- **`matrix_based_adr`**: Matrix-Based Advection-Diffusion-Reaction Benchmark (MPI Parallel). Useful for comparing performance against the matrix-free implementation in a distributed setting.
+- **`matrix_based_adr_seq`**: Matrix-Based Advection-Diffusion-Reaction Benchmark (Serial). Useful to quickly compute the solution of a cefined problem.
+- **`matrix_free_adr`**: Matrix-free Advection-Diffusion-Reaction Solver. This is the primary test for the matrix-free implementation, including memory benchmarking.
+
+### Running Tests
+
+The test executables are located in the `build/tests/` directory after building.
+
+```bash
+cd build/tests
+
+# Run matrix-free ADR solver
+mpirun -np 8 ./matrix_free_adr
+
+# Run matrix-based parallel ADR solver
+mpirun -np 8 ./matrix_based_adr
+
+# Run matrix-based serial ADR solver
+./matrix_based_adr_serial
 ```
 
 ## Implementation Guide
@@ -163,53 +188,9 @@ make
 - More flexible preconditioners available
 - Competitive for low-order elements (p = 1, 2)
 
-### Sample Output
-
-```
-========================================
-Cycle 0
-========================================
-Number of active cells: 1024
-Number of degrees of freedom: 4225
-
-Solving with matrix-free method...
-Matrix-free solver converged in 87 iterations.
-
-Solving with matrix-based method...
-Matrix-based solver converged in 87 iterations.
-
-Performance Comparison:
-DoFs  | Setup MF | Setup MB | Solve MF | Solve MB | Speedup
-------|----------|----------|----------|----------|--------
-4225  | 0.05s    | 0.12s    | 0.08s    | 0.45s    | 5.6×
-```
-
-## Testing Strategy
-
-1. **Correctness**: Use manufactured solutions to verify convergence rates
-2. **Consistency**: Ensure both solvers produce identical results (within tolerance)
-3. **Scaling**: Test with increasing mesh refinement and polynomial degree
-4. **Parallel**: Run with different thread counts to measure scalability
 
 ## References
 
 - deal.II Step-37: [Matrix-free methods](https://www.dealii.org/current/doxygen/deal.II/step_37.html)
 - deal.II Documentation: [MatrixFree class](https://www.dealii.org/current/doxygen/deal.II/classMatrixFree.html)
 - Kronbichler & Kormann (2012): "Fast matrix-free evaluation of discontinuous Galerkin finite element operators"
-
-## Tips for Implementation
-
-1. Start with the matrix-based solver to verify correctness
-2. Implement matrix-free for simple case first (constant coefficients)
-3. Add variable coefficients incrementally
-4. Use manufactured solutions for testing
-5. Compare iteration counts between methods (should be identical)
-6. Profile code to identify bottlenecks
-7. Experiment with different polynomial degrees to see performance crossover
-
-## Notes
-
-- Solutions should match to machine precision (< 1e-10 difference)
-- Iteration counts should be identical for same preconditioner
-- Matrix-free advantages become clear for p ≥ 2
-- Consider using `-march=native` compiler flag for vectorization
