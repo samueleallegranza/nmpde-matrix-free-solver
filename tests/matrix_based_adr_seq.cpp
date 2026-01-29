@@ -231,7 +231,7 @@ void SimpleADRBenchmark<dim>::output_results(const unsigned int cycle) const
     std::string suffix = std::to_string(cycle);
     while (suffix.size() < 3)
         suffix = "0" + suffix;
-    std::ofstream output("adr_bf_seq_solution_" + suffix + ".vtu");
+    std::ofstream output("adr_mb_seq_solution_" + suffix + ".vtu");
   data_out.write_vtu(output);
 }
 
