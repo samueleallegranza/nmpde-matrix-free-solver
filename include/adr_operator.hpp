@@ -42,7 +42,28 @@ private:
 
     Table<2, VectorizedArray<number>>                  mu_values;
     Table<2, Tensor<1, dim, VectorizedArray<number>>>  beta_values;
-    Table<2, VectorizedArray<number>>                  gamma_plus_div_beta_values;
+    Table<2, VectorizedArray<number>>                  gamma_values;
+};
+
+template <typename MatrixType>
+class JacobiSmoother : public DiagonalMatrix<typename MatrixType::vector_type> {
+public:
+    using VectorType = typename MatrixType::vector_type;
+    using value_type = typename VectorType::value_type;
+
+    struct AdditionalData {
+        double relaxation = 1.0;
+    };
+
+    void initialize(const MatrixType &matrix, const AdditionalData &data);
+
+    void step(VectorType &dst, const VectorType &src) const;
+
+    void Tstep(VectorType &dst, const VectorType &src) const;
+
+private:
+    const MatrixType *matrix;
+    double relaxation;
 };
 
 #endif //PROJECT7_MATRIXFREE_ADR_OPERATOR_HPP
