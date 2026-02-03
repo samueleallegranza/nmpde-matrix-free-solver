@@ -12,50 +12,43 @@
 #include <adr_problem.hpp>
 #include <general_definitions.hpp>
 
+using namespace dealii;
 
-namespace ADR_Problem_Test {
-    using namespace dealii;
+int main(int argc, char *argv[]) {
+    try {
 
-    int main(int argc, char *argv[])
-    {
-        try {
-            using namespace ADR_Problem_Test;
+        Utilities::MPI::MPI_InitFinalize mpi_init(argc, argv,1);
 
-            Utilities::MPI::MPI_InitFinalize mpi_init(argc, argv);
+        ADRProblem<3> adr_problem;
 
-            ADRProblem<dimension> adr_problem;
-
-            for (int refinement_cycle = 0; refinement_cycle < 3; refinement_cycle++) {
-                adr_problem.run(refinement_cycle, "solution");
-            }
-
-        }
-        catch (std::exception &exc)
-        {
-            std::cerr << std::endl
-                      << std::endl
-                      << "----------------------------------------------------"
-                      << std::endl;
-            std::cerr << "Exception on processing: " << std::endl
-                      << exc.what() << std::endl
-                      << "Aborting!" << std::endl
-                      << "----------------------------------------------------"
-                      << std::endl;
-            return 1;
-        }
-        catch (...)
-        {
-            std::cerr << std::endl
-                      << std::endl
-                      << "----------------------------------------------------"
-                      << std::endl;
-            std::cerr << "Unknown exception!" << std::endl
-                      << "Aborting!" << std::endl
-                      << "----------------------------------------------------"
-                      << std::endl;
-            return 1;
+        for (unsigned int refinement_cycle = 0; refinement_cycle < 3; refinement_cycle++) {
+            adr_problem.run(refinement_cycle, "solution");
         }
 
-        return 0;
     }
+    catch (std::exception &exc) {
+        std::cerr << std::endl
+                  << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::cerr << "Exception on processing: " << std::endl
+                  << exc.what() << std::endl
+                  << "Aborting!" << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        return 1;
+    }
+    catch (...) {
+        std::cerr << std::endl
+                  << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        std::cerr << "Unknown exception!" << std::endl
+                  << "Aborting!" << std::endl
+                  << "----------------------------------------------------"
+                  << std::endl;
+        return 1;
+    }
+
+    return 0;
 }
