@@ -166,6 +166,7 @@ void ADRProblem<dim>::setup_system() {
 template <int dim>
 void ADRProblem<dim>::assemble_rhs() {
     Timer time;
+    const NeumannBoundaryCondition<dim> neumann;
 
     system_rhs = 0;
     FEEvaluation<dim, degree_finite_element> phi(*system_matrix.get_matrix_free());
@@ -176,7 +177,7 @@ void ADRProblem<dim>::assemble_rhs() {
 
         //! TODO verify correctness
         for (unsigned int q = 0; q < phi.n_q_points; ++q)
-            phi.submit_value(f(cell, q) * phi.get_value(), q);
+            phi.submit_value((f(cell, q) + neumann(cell, q)) * phi.get_value(), q);
 
         phi.integrate(EvaluationFlags::values);
         phi.distribute_local_to_global(system_rhs);
@@ -196,6 +197,7 @@ void ADRProblem<dim>::solve() {
     MGTransferMatrixFree<dim, float> mg_transfer(mg_constrained_dofs);
     mg_transfer.build(dof_handler);
     setup_time += time.wall_time();
+
     //! TODO implement Chebyshev instead
     using SmootherType = JacobiSmoother<LevelMatrixType>;
     using VectorTypeMG = LinearAlgebra::distributed::Vector<float>;
@@ -253,24 +255,8 @@ void ADRProblem<dim>::solve() {
     time.reset();
     time.start();
 
-    //! TODO
-    // old is :
-    // constraints.set_zero(solution);
-    // changed to:
+    //! TODO check correctness of the following with BCs
     constraints.distribute(solution);
-
-    // B. Calculate the contribution of these boundary values to the system: A * u_bc
-    LinearAlgebra::distributed::Vector<double> boundary_contribution;
-    system_matrix.initialize_dof_vector(boundary_contribution);
-    system_matrix.vmult(boundary_contribution, solution);
-
-    // C. Adjust the RHS: f_new = f_old - A * u_bc
-    // We are now solving for the correction: A * delta_u = f_new
-    system_rhs.add(-1.0, boundary_contribution);
-
-    // D. Reset solution boundary DoFs to zero for the solve phase.
-    // The solver will compute the correction 'delta_u' which must be 0 at boundaries.
-    constraints.set_zero(solution);
 
     try {
         gmres.solve(system_matrix, solution, system_rhs, preconditioner);
@@ -287,10 +273,11 @@ void ADRProblem<dim>::solve() {
 
 
 template <int dim>
-void ADRProblem<dim>::output_results(const unsigned int cycle,std::string filename) const {
+void ADRProblem<dim>::output_results(std::string filename, const unsigned int cycle) const {
     Timer time;
+
     // do not output for big meshes
-    if (triangulation.n_global_active_cells() > 1000000) {
+    if (triangulation.n_global_active_cells() > MAX_OUTPUT_MESH_ELEMENTS) {
         pcout << "File too big" << std::endl;
         return;
     }
@@ -307,13 +294,13 @@ void ADRProblem<dim>::output_results(const unsigned int cycle,std::string filena
     data_out.set_flags(flags);
     data_out.write_vtu_with_pvtu_record("./", filename, cycle, MPI_COMM_WORLD, 3);
 
-    time_details << "Time write output          (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << "s\n";
+    pcout << "Time write output          (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << "s\n";
 }
 
 
 //! TODO extract for to be on the user side
 template <int dim>
-void ADRProblem<dim>::run() {
+void ADRProblem<dim>::run(const unsigned int refinement, std::string filename) {
     const unsigned int n_vect_doubles = VectorizedArray<double>::size();
     const unsigned int n_vect_bits    = 8 * sizeof(double) * n_vect_doubles;
 
@@ -322,20 +309,11 @@ void ADRProblem<dim>::run() {
             << Utilities::System::get_current_vectorization_level() << ')'
             << std::endl;
 
-    for (unsigned int cycle = 0; cycle < 5; ++cycle) {
-        pcout << "Cycle " << cycle << std::endl;
+    GridGenerator::hyper_cube(triangulation, 0., 1.);
+    triangulation.refine_global(2 + refinement);
 
-        if (cycle == 0)
-          {
-            GridGenerator::hyper_cube(triangulation, 0., 1.);
-            triangulation.refine_global(2);
-          }
-        triangulation.refine_global(1);
-        setup_system();
-        assemble_rhs();
-        solve();
-        output_results(cycle);
-        pcout << std::endl;
-      };
-  }
+    setup_system();
+    assemble_rhs();
+    solve();
+    output_results(filename, refinement);
 }

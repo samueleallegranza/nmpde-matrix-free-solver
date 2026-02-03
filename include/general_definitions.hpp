@@ -43,6 +43,7 @@
 const unsigned int degree_finite_element = 2;
 const unsigned int dimension             = 3;
 
+#define MAX_OUTPUT_MESH_ELEMENTS 1000000
 
 #if !defined(BUILD_TYPE_DEBUG)
 #define LOG_VAR(name,val) ;

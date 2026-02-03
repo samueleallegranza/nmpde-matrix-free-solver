@@ -45,6 +45,16 @@ double DirichletBoundaryCondition<dim>::value(const Point<dim> & p, const unsign
 }
 
 template <int dim> template< typename number>
+number NeumannBoundaryCondition<dim>::value(const Point<dim, number> &p, const unsigned int /*component*/) const {
+    return 0.0;
+}
+
+template <int dim>
+double NeumannBoundaryCondition<dim>::value(const Point<dim> & p, const unsigned int component) const {
+    return value<double>(p, component);
+}
+
+template <int dim> template< typename number>
 number ForceTerm<dim>::value(const Point<dim, number> &p, const unsigned int /*component*/) const {
     return 1.0;
 }

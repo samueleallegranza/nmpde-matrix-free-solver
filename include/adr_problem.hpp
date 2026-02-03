@@ -11,13 +11,13 @@ template <int dim>
 class ADRProblem {
 public:
     ADRProblem();
-    void run();
+    void run(const unsigned int refinement, std::string filename);
 
 private:
     void setup_system();
     void assemble_rhs();
     void solve();
-    void output_results(const unsigned int cycle, std::string filename) const;
+    void output_results(std::string filename, const unsigned int cycle = 0) const;
     void print_memory_usage(const std::string &stage) const; // Added
 
     #ifdef DEAL_II_WITH_P4EST

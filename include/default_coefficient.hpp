@@ -50,6 +50,17 @@ public:
 };
 
 template <int dim>
+class NeumannBoundaryCondition : public Function<dim> {
+public:
+    virtual double value(const Point<dim> & p,
+                 const unsigned int component = 0) const override;
+
+    template <typename number>
+    number value(const Point<dim, number> &p,
+                 const unsigned int        component = 0) const;
+};
+
+template <int dim>
 class ForceTerm : public Function<dim> {
 public:
     virtual double value(const Point<dim> & p,
