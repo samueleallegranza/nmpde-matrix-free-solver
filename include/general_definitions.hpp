@@ -35,10 +35,34 @@
 #include <deal.II/matrix_free/operators.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
 
+#include <sys/resource.h>
+#include <filesystem>
 #include <iostream>
 #include <fstream>
 
 const unsigned int degree_finite_element = 2;
 const unsigned int dimension             = 3;
+
+
+#if !defined(BUILD_TYPE_DEBUG)
+#define LOG_VAR(name,val) ;
+#define LOG(val) ;
+#else
+#define GREEN   "\033[32m"
+#define YELLOW  "\033[33m"
+#define BLUE  "\033[34m"
+#define CYAN    "\033[36m"
+#define RESET   "\033[0m"
+
+#define FILE_NAME std::filesystem::path(__FILE__).filename().string()
+#define LOG_PREFIX  CYAN "LOG " << BLUE << FILE_NAME << CYAN << " at line " << BLUE << __LINE__ << CYAN << ": [ "
+#define LOG_SUFFIX  " ]" << RESET
+#define LOG_TITLE(title) pcout << LOG_PREFIX << CYAN \
+<< "======================== " << title   << " ========================" \
+<< LOG_SUFFIX <<std::endl;
+#define LOG_VAR(name,val) pcout << LOG_PREFIX << GREEN << name << CYAN << " == " << YELLOW << val << CYAN << LOG_SUFFIX <<std::endl;
+#define LOG(val) pcout << LOG_PREFIX << YELLOW << val << CYAN << LOG_SUFFIX <<std::endl;
+#endif
+
 
 #endif //PROJECT7_MATRIXFREE_GENERAL_DEFINITIONS_HPP

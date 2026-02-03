@@ -26,10 +26,30 @@ Tensor<1, dim, double> AdvectionCoefficient<dim>::value(const Point<dim> & p, co
 
 template <int dim> template< typename number>
 number ReactionCoefficient<dim>::value(const Point<dim, number> &p, const unsigned int /*component*/) const {
-    return 1.0 + 0.0;
+    return 1.0;
 }
 
 template <int dim>
 double ReactionCoefficient<dim>::value(const Point<dim> & p, const unsigned int component) const {
+    return value<double>(p, component);
+}
+
+template <int dim> template< typename number>
+number DirichletBoundaryCondition<dim>::value(const Point<dim, number> &p, const unsigned int /*component*/) const {
+    return 0.0;
+}
+
+template <int dim>
+double DirichletBoundaryCondition<dim>::value(const Point<dim> & p, const unsigned int component) const {
+    return value<double>(p, component);
+}
+
+template <int dim> template< typename number>
+number ForceTerm<dim>::value(const Point<dim, number> &p, const unsigned int /*component*/) const {
+    return 1.0;
+}
+
+template <int dim>
+double ForceTerm<dim>::value(const Point<dim> & p, const unsigned int component) const {
     return value<double>(p, component);
 }

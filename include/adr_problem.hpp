@@ -3,6 +3,8 @@
 
 #include <general_definitions.hpp>
 #include <default_coefficient.hpp>
+#include <adr_operator.hpp>
+
 using namespace dealii;
 
 template <int dim>
@@ -15,7 +17,7 @@ private:
     void setup_system();
     void assemble_rhs();
     void solve();
-    void output_results(const unsigned int cycle) const;
+    void output_results(const unsigned int cycle, std::string filename) const;
     void print_memory_usage(const std::string &stage) const; // Added
 
     #ifdef DEAL_II_WITH_P4EST
