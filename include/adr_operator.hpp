@@ -98,7 +98,7 @@ void ADROperator<dim, fe_degree, number>::evaluate_coefficients(
         for (unsigned int q = 0; q < phi.n_q_points; ++q) {
             const Point<dim, VectorizedArray<number>> p = phi.quadrature_point(q);
             mu_values(cell, q) = diffu_f.value(phi.quadrature_point(q));
-            beta_values(cell, q) = advec_f.value(phi.quadrature_point(q));
+            beta_values(cell, q) = advec_f.vector_value(phi.quadrature_point(q));
             gamma_values(cell, q) = react_f.value(phi.quadrature_point(q));
         }
     }

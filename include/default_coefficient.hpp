@@ -16,7 +16,7 @@ public:
 };
 
 template <int dim>
-class AdvectionCoefficient : public Function<dim> {
+class ReactionCoefficient : public Function<dim> {
 public:
     virtual double value(const Point<dim> & p,
                  const unsigned int component = 0) const override;
@@ -27,7 +27,7 @@ public:
 };
 
 template <int dim>
-class ReactionCoefficient : public Function<dim> {
+class AdvectionCoefficient : public Function<dim> {
 public:
     virtual double value(const Point<dim> & p,
                  const unsigned int component = 0) const override;
@@ -35,6 +35,11 @@ public:
     template <typename number>
     number value(const Point<dim, number> &p,
                  const unsigned int        component = 0) const;
+
+    virtual void vector_value(const Point<dim> &p, Vector<double> &values) const override;
+
+    template <typename number>
+    void vector_value(const Point<dim> &p, Vector<number> &values) const;
 };
 
 template <int dim>
@@ -81,12 +86,22 @@ double DiffusionCoefficient<dim>::value(const Point<dim> & p, const unsigned int
 }
 
 template <int dim> template< typename number>
-number AdvectionCoefficient<dim>::value(const Point<dim, number> &p, const unsigned int /*component*/) const {
-    // Tensor<1, dim, number> beta;
-    // beta[0] = 1.0;
-    // beta[1] = 0.5;
-    // if (dim > 2) beta[2] = 0.0;
+number ReactionCoefficient<dim>::value(const Point<dim, number> &p, const unsigned int /*component*/) const {
     return 2.0;
+}
+
+template <int dim>
+double ReactionCoefficient<dim>::value(const Point<dim> & p, const unsigned int component) const {
+    return value<double>(p, component);
+}
+
+template <int dim> template< typename number>
+number AdvectionCoefficient<dim>::value(const Point<dim, number> &p, const unsigned int component) const {
+    if (component == 0)
+        return 0.1 * p[0];
+    if (component == 1)
+        return 0.1 * p[0];
+    return 0.0;
 }
 
 template <int dim>
@@ -95,13 +110,15 @@ double AdvectionCoefficient<dim>::value(const Point<dim> & p, const unsigned int
 }
 
 template <int dim> template< typename number>
-number ReactionCoefficient<dim>::value(const Point<dim, number> &p, const unsigned int /*component*/) const {
-    return 1.0;
+void AdvectionCoefficient<dim>::vector_value(const Point<dim> &p, Vector<number> &values) const {
+    values[0] = 0.25 * p[0];
+    values[1] = 0.25 * p[0];
+    values[2] = 0.0;
 }
 
 template <int dim>
-double ReactionCoefficient<dim>::value(const Point<dim> & p, const unsigned int component) const {
-    return value<double>(p, component);
+void AdvectionCoefficient<dim>::vector_value(const Point<dim> &p, Vector<double> &values) const {
+    return vector_value<double>(p,values);
 }
 
 template <int dim> template< typename number>
