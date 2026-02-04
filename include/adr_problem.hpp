@@ -221,15 +221,24 @@ void ADRProblem<dim>::assemble_rhs() {
     ForceTerm<dim> f;
     for (unsigned int cell = 0; cell < system_matrix.get_matrix_free()->n_cell_batches(); ++cell) {
         phi.reinit(cell);
-        phi.evaluate(EvaluationFlags::values);
+        //phi.evaluate(EvaluationFlags::values); We don't need this because we are assembly the RHS and we don't need to
+        //"evaluate" anything from a solution vector.
+        for (unsigned int q = 0; q < phi.n_q_points; ++q) {
+            //phi.submit_value((f.value(phi.quadrature_point(q))  + neumann.value(phi.quadrature_point(q)) ) * phi.get_value(q), q);
+            // We submit the value of the force term at the quadrature point.
+            phi.submit_value(f.value(phi.quadrature_point(q)), q);
+        }
 
-        //! TODO verify correctness
-        for (unsigned int q = 0; q < phi.n_q_points; ++q)
-            phi.submit_value((f.value(phi.quadrature_point(q))  + neumann.value(phi.quadrature_point(q)) ) * phi.get_value(q), q);
-
+        // This performs the actual integration with the values (multiplication by test functions and weights)
         phi.integrate(EvaluationFlags::values);
         phi.distribute_local_to_global(system_rhs);
     }
+
+    //!TODO verify Neumann boundary addition
+    // Neumann is a boundary flux and standard cell loops only iterate over the interior of the domain.
+    // Therefore, it cannot be in the loop above
+    // To handle Neumann boundaries in matrix-free: FEFaceEvaluation over the boundary faces.
+
     system_rhs.compress(VectorOperation::add);
 
     setup_time += time.wall_time();
@@ -357,6 +366,7 @@ void ADRProblem<dim>::run(unsigned int refinement, std::string filename) {
             << Utilities::System::get_current_vectorization_level() << ')'
             << std::endl;
 
+    triangulation.clear(); //clear previous data to allow re-initialization
     GridGenerator::hyper_cube(triangulation, 0., 1.);
     triangulation.refine_global(2 + refinement);
 

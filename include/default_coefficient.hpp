@@ -29,17 +29,10 @@ public:
 template <int dim>
 class AdvectionCoefficient : public Function<dim> {
 public:
-    virtual double value(const Point<dim> & p,
-                 const unsigned int component = 0) const override;
-
-    template <typename number>
-    number value(const Point<dim, number> &p,
-                 const unsigned int        component = 0) const;
-
     virtual void vector_value(const Point<dim> &p, Vector<double> &values) const override;
 
     template <typename number>
-    void vector_value(const Point<dim> &p, Vector<number> &values) const;
+    Tensor<1, dim, number> vector_value(const Point<dim, number> &p) const;
 };
 
 template <int dim>
@@ -95,7 +88,7 @@ double ReactionCoefficient<dim>::value(const Point<dim> & p, const unsigned int 
     return value<double>(p, component);
 }
 
-template <int dim> template< typename number>
+/*template <int dim> template< typename number>
 number AdvectionCoefficient<dim>::value(const Point<dim, number> &p, const unsigned int component) const {
     if (component == 0)
         return 0.1 * p[0];
@@ -107,21 +100,31 @@ number AdvectionCoefficient<dim>::value(const Point<dim, number> &p, const unsig
 template <int dim>
 double AdvectionCoefficient<dim>::value(const Point<dim> & p, const unsigned int component) const {
     return value<double>(p, component);
-}
+}*/
 
-template <int dim> template< typename number>
-void AdvectionCoefficient<dim>::vector_value(const Point<dim> &p, Vector<number> &values) const {
-    values[0] = 0.25 * p[0];
-    values[1] = 0.25 * p[0];
-    values[2] = 0.0;
+template <int dim> template <typename number>
+Tensor<1, dim, number> AdvectionCoefficient<dim>::vector_value(const Point<dim, number> &p) const
+{
+    Tensor<1, dim, number> beta;
+
+    beta[0] = number(0.25) * p[0];
+    beta[1] = number(0.25) * p[0];
+    if (dim > 2) beta[2] = number(0.0);
+
+    return beta;
 }
 
 template <int dim>
 void AdvectionCoefficient<dim>::vector_value(const Point<dim> &p, Vector<double> &values) const {
-    return vector_value<double>(p,values);
+    // call our template version
+    Tensor<1, dim, double> beta = this->template vector_value<double>(p);
+
+    // results are copied into the Vector object
+    for (unsigned int d = 0; d < dim; ++d)
+        values[d] = beta[d];
 }
 
-template <int dim> template< typename number>
+template <int dim> template<typename number>
 number DirichletBoundaryCondition<dim>::value(const Point<dim, number> &p, const unsigned int /*component*/) const {
     return 0.0;
 }
