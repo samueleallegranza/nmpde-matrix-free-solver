@@ -35,6 +35,8 @@
 
 build/*
 
+.idea
+
 results/*.vtu
 results/*.pvtu
 .vscode/
