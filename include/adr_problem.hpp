@@ -8,7 +8,7 @@
 template <int dim>
 class ADRProblem {
 public:
-    ADRProblem();
+    ADRProblem(std::string param_filename);
     void run(unsigned int refinement, std::string filename);
 
 private:
@@ -17,6 +17,7 @@ private:
     void solve();
     void output_results(std::string filename, const unsigned int cycle = 0) const;
     void print_memory_usage(const std::string &stage) const; // Added
+    void declare_parameters();
 
     #ifdef DEAL_II_WITH_P4EST
         parallel::distributed::Triangulation<dim, dim> triangulation;
@@ -43,10 +44,22 @@ private:
     double             setup_time;
     ConditionalOStream pcout;
     ConditionalOStream time_details;
+
+    ParameterHandler prm;
+    int max_iterations;
+    double tolerance;
+    bool use_jacobi,use_gmres;
+    FunctionParser<dim> diffu_c;
+    FunctionParser<dim> advec_c;
+    FunctionParser<dim> react_c;
+    FunctionParser<dim> force;
+    FunctionParser<dim> dirichlet;
+    FunctionParser<dim> neumann;
 };
 
+
 template <int dim>
-ADRProblem<dim>::ADRProblem()
+ADRProblem<dim>::ADRProblem(std::string param_filename)
 #ifdef DEAL_II_WITH_P4EST
     : triangulation(
         MPI_COMM_WORLD,
@@ -64,10 +77,97 @@ ADRProblem<dim>::ADRProblem()
         std::cout,
         false &&
         Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0
-        ) {
+        )
+    , diffu_c(1)
+    , advec_c(dim)
+    , react_c(1)
+    , force(1)
+    , dirichlet(1)
+    , neumann(1)
+{
+    declare_parameters();
+    prm.parse_input(param_filename);
 
+    prm.enter_subsection("Algebraic Solver");
+    {
+        max_iterations = prm.get_integer("Max iterations");
+        tolerance = prm.get_double("Tolerance");
+        use_jacobi = prm.get("Preconditioner") == "Jacobi";
+        use_gmres = prm.get("Solver") == "GMRES";
+        prm.leave_subsection();
+    }
+    prm.enter_subsection("Data");
+        std::map<std::string, double> constants;
+        constants["pi"] = numbers::PI;
+        std::string variables = "x,y,z";
+
+        std::string diffu_str = prm.get("Diffusion Coefficient");
+        diffu_c.initialize(
+            variables,
+            diffu_str,
+            constants
+        );
+
+        std::vector<std::string> advec_strs(dim);
+        if constexpr (dim >= 1)
+            advec_strs[0] = prm.get("Advection Coefficient x value");
+        if constexpr (dim >= 2)
+            advec_strs[1] = prm.get("Advection Coefficient y value");
+        if constexpr (dim >= 3)
+            advec_strs[2] = prm.get("Advection Coefficient z value");
+
+        advec_c.initialize(
+            variables,
+            advec_strs,
+            constants
+        );
+
+        std::string react_str = prm.get("Reaction Coefficient");
+        react_c.initialize(
+            variables,
+            react_str,
+            constants
+        );
+
+        std::string force_str = prm.get("Force term");
+        force.initialize(
+            variables,
+            force_str,
+            constants
+        );
+
+        std::string dirichlet_str = prm.get("Dirichlet Boundary function");
+        dirichlet.initialize(
+            variables,
+            dirichlet_str,
+            constants
+        );
+
+        std::string neumann_str = prm.get("Neumann Boundary function");
+        neumann.initialize(
+            variables,
+            neumann_str,
+            constants
+        );
+    prm.leave_subsection();
+
+    LOG_TITLE("Parameters were read successfully");
+    LOG_VAR("Max number of iters",max_iterations);
+    LOG_VAR("Tolerance",tolerance);
+    LOG_VAR("Preconditioner", (use_jacobi ? "Jacobi" : "Chebyshev"));
+    LOG_VAR("Solver", (use_gmres ? "GMRES" : "CG"));
+    LOG_VAR("mu(x,y,z)",diffu_str);
+    if constexpr (dim >= 1)
+        LOG_VAR("beta_x(x,y,z)",advec_strs[0]);
+    if constexpr (dim >= 2)
+        LOG_VAR("beta_y(x,y,z)",advec_strs[1]);
+    if constexpr (dim >= 3)
+        LOG_VAR("beta_z(x,y,z)",advec_strs[2]);
+    LOG_VAR("gamma(x,y,z)",react_str);
+    LOG_VAR("f(x,y,z)",force_str);
+    LOG_VAR("g(x,y,z)",dirichlet_str);
+    LOG_VAR("h(x,y,z)",neumann_str);
 }
-
 //! TODO to remove
 template <int dim>
 void ADRProblem<dim>::print_memory_usage(const std::string &stage) const {
@@ -88,6 +188,101 @@ void ADRProblem<dim>::print_memory_usage(const std::string &stage) const {
             << std::endl;
   }
 
+template<int dim>
+void ADRProblem<dim>::declare_parameters() {
+    prm.enter_subsection("Algebraic Solver");
+    {
+        prm.declare_entry(
+            "Max iterations",
+            "500",
+            Patterns::Integer(),
+            "The maximum number of iterations to be performed by the linear solver"
+        );
+        prm.declare_entry(
+            "Tolerance",
+            "1.0e-12",
+            Patterns::Double(),
+            "The tolerance for the linear solver (it will be multiplied by the L^2 norm of the rhs)"
+        );
+        prm.declare_entry(
+            "Solver",
+            "GMRES",
+            Patterns::Selection("GMRES|CG"),
+            "The linear solver to be used"
+        );
+        prm.declare_entry(
+            "Preconditioner",
+            "Jacobi",
+            Patterns::Selection("Jacobi|Chebyshev"),
+            "The preconditioner to be used with the linear solver"
+        );
+    }
+    prm.leave_subsection();
+
+    prm.enter_subsection("Data");
+    {
+        prm.declare_entry(
+            "Diffusion Coefficient",
+            "1",
+            Patterns::Anything(),
+            "The diffusion coefficient of the PDE",
+            true
+        );
+        prm.declare_entry(
+            "Reaction Coefficient",
+            "0",
+            Patterns::Anything(),
+            "The reaction coefficient of the PDE",
+            false
+        );
+        prm.declare_entry(
+            "Advection Coefficient x value",
+            "0",
+            Patterns::Anything(),
+            "The x value of the advection coefficient of the PDE",
+            false
+        );
+        prm.declare_entry(
+            "Advection Coefficient y value",
+            "0",
+            Patterns::Anything(),
+            "The y value of the advection coefficient of the PDE",
+            false
+        );
+        prm.declare_entry(
+            "Advection Coefficient z value",
+            "0",
+            Patterns::Anything(),
+            "The z value of the advection coefficient of the PDE",
+            false
+        );
+        prm.declare_entry(
+            "Force term",
+            "0",
+            Patterns::Anything(),
+            "The force term (aka the rhs of the equation: Lu=f in Omega )",
+            false
+        );
+        prm.declare_entry(
+            "Dirichlet Boundary function",
+            "0",
+            Patterns::Anything(),
+            "The function to be applied at the Dirichlet boundary",
+            false
+        );
+        prm.declare_entry(
+            "Neumann Boundary function",
+            "0",
+            Patterns::Anything(),
+            "The function to be applied at the Neumann boundary",
+            false
+        );
+    }
+    prm.leave_subsection();
+    // #if defined(BUILD_TYPE_DEBUG)
+    // prm.print_parameters("default_parameters.xml",ParameterHandler::XML);
+    // #endif
+}
 
 
 template <int dim>
@@ -114,7 +309,7 @@ void ADRProblem<dim>::setup_system() {
         mapping,
         dof_handler,
         0,
-        DirichletBoundaryCondition<dim>(),
+        dirichlet,
         constraints
     );
     constraints.close();
@@ -147,10 +342,7 @@ void ADRProblem<dim>::setup_system() {
         system_matrix.initialize(system_mf_storage);
     }
 
-    DiffusionCoefficient<dim> mu;
-    AdvectionCoefficient<dim> beta;
-    ReactionCoefficient<dim> gamma;
-    system_matrix.evaluate_coefficients(mu, beta, gamma);
+    system_matrix.evaluate_coefficients(diffu_c, advec_c, react_c);
 
     system_matrix.initialize_dof_vector(solution);
     system_matrix.initialize_dof_vector(system_rhs);
@@ -201,7 +393,7 @@ void ADRProblem<dim>::setup_system() {
             level
             );
 
-        mg_matrices[level].evaluate_coefficients(mu,beta,gamma);
+        mg_matrices[level].evaluate_coefficients(diffu_c,advec_c,react_c);
     }
     setup_time += time.wall_time();
     time_details << "Setup matrix-free levels   (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << 's' << std::endl;
@@ -214,7 +406,6 @@ void ADRProblem<dim>::setup_system() {
 template <int dim>
 void ADRProblem<dim>::assemble_rhs() {
     Timer time;
-    const NeumannBoundaryCondition<dim> neumann;
 
     system_rhs = 0;
     FEEvaluation<dim, degree_finite_element> phi(*system_matrix.get_matrix_free());
@@ -224,9 +415,16 @@ void ADRProblem<dim>::assemble_rhs() {
         //phi.evaluate(EvaluationFlags::values); We don't need this because we are assembly the RHS and we don't need to
         //"evaluate" anything from a solution vector.
         for (unsigned int q = 0; q < phi.n_q_points; ++q) {
+            const Point<dim,VectorizedArray<double> > p_vect =phi.quadrature_point(q);
+            VectorizedArray<double> f_value = 0.0;
+            for (unsigned int v=0; v<VectorizedArray<double>::size(); ++v) {
+                Point<dim> p;
+                for (unsigned int d=0; d<dim; ++d) p[d] = p_vect[d][v];
+                f_value[v] = force.value(p);
+            }
             //phi.submit_value((f.value(phi.quadrature_point(q))  + neumann.value(phi.quadrature_point(q)) ) * phi.get_value(q), q);
             // We submit the value of the force term at the quadrature point.
-            phi.submit_value(f.value(phi.quadrature_point(q)), q);
+            phi.submit_value(f_value, q);
         }
 
         // This performs the actual integration with the values (multiplication by test functions and weights)
@@ -295,8 +493,6 @@ void ADRProblem<dim>::solve() {
     PreconditionMG<dim,LinearAlgebra::distributed::Vector<float>,MGTransferMatrixFree<dim, float>> preconditioner(dof_handler, mg, mg_transfer);
 
     //! TODO put as problem
-    const int max_iterations = 500;
-    const double tolerance = 1.0e-12;
     SolverControl solver_control(max_iterations, tolerance * system_rhs.l2_norm());
 
     typename SolverGMRES<LinearAlgebra::distributed::Vector<double>>::AdditionalData gmres_data;

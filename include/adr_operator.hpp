@@ -15,9 +15,9 @@ public:
     void clear() override;
 
     void evaluate_coefficients(
-        const DiffusionCoefficient<dim> &diffu_f,
-        const AdvectionCoefficient<dim> &advec_f,
-        const ReactionCoefficient<dim> &react_f
+        const FunctionParser<dim> &diffu_f,
+        const FunctionParser<dim> &advec_f,
+        const FunctionParser<dim> &react_f
         );
 
     virtual void compute_diagonal() override;
@@ -82,9 +82,9 @@ void ADROperator<dim, fe_degree, number>::clear() {
 
 template <int dim, int fe_degree, typename number>
 void ADROperator<dim, fe_degree, number>::evaluate_coefficients(
-    const DiffusionCoefficient<dim> &diffu_f,
-    const AdvectionCoefficient<dim> &advec_f,
-    const ReactionCoefficient<dim> &react_f
+    const FunctionParser<dim> &diffu_f,
+    const FunctionParser<dim> &advec_f,
+    const FunctionParser<dim> &react_f
     ) {
     const unsigned int n_cells = this->data->n_cell_batches();
     FEEvaluation<dim, fe_degree, fe_degree + 1, 1, number> phi(*this->data);
@@ -96,10 +96,20 @@ void ADROperator<dim, fe_degree, number>::evaluate_coefficients(
     for (unsigned int cell = 0; cell < n_cells; ++cell) {
         phi.reinit(cell);
         for (unsigned int q = 0; q < phi.n_q_points; ++q) {
-            const Point<dim, VectorizedArray<number>> p = phi.quadrature_point(q);
-            mu_values(cell, q) = diffu_f.value(p);
-            beta_values(cell, q) = advec_f.vector_value(p);
-            gamma_values(cell, q) = react_f.value(p);
+            const Point<dim, VectorizedArray<number>> p_vect = phi.quadrature_point(q);
+            VectorizedArray<number> diffu_value;
+            Tensor<1, dim, VectorizedArray<number>> advec_value;
+            VectorizedArray<number> react_value;
+            for (unsigned int v=0; v<VectorizedArray<number>::size(); ++v) {
+                Point<dim> p;
+                for (unsigned int d=0; d<dim; ++d) p[d] = p_vect[d][v];
+                diffu_value[v] = diffu_f.value(p);
+                advec_value[v] = advec_f.value(p);
+                react_value[v] = react_f.value(p);
+            }
+            mu_values(cell, q) = diffu_value;
+            beta_values(cell, q) = advec_value;
+            gamma_values(cell, q) = react_value;
         }
     }
 }

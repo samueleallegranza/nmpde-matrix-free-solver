@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
 
         Utilities::MPI::MPI_InitFinalize mpi_init(argc, argv,1);
 
-        ADRProblem<3> adr_problem;
+        ADRProblem<3> adr_problem("../input/params/parameters.xml");;
 
         for (unsigned int refinement_cycle = 0; refinement_cycle < 3; refinement_cycle++) {
             adr_problem.run(refinement_cycle, "solution");

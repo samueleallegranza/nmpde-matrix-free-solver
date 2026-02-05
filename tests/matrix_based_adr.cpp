@@ -312,7 +312,7 @@ void MPIADRBenchmark<dim>::run()
 {
   pcout << "Running Matrix-Based Benchmark (MPI, Dimension " << dim << ")" << std::endl;
 
-  for (unsigned int cycle = 0; cycle < 4; ++cycle)
+  for (unsigned int cycle = 0; cycle < 3; ++cycle)
   {
       pcout << "Cycle " << cycle << std::endl;
 

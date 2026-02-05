@@ -17,3 +17,8 @@ add_executable(matrix_free_test
         include/general_definitions.hpp
 )
 deal_ii_setup_target(matrix_free_test)
+
+add_executable(matrix_based_test tests/matrix_based_adr.cpp)
+deal_ii_setup_target(matrix_based_test)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter -Wno-float-conversion")

@@ -35,6 +35,9 @@
 #include <deal.II/matrix_free/operators.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
 
+#include <deal.II/base/function_parser.h>
+#include <deal.II/base/parameter_handler.h>
+
 #include <sys/resource.h>
 #include <filesystem>
 #include <iostream>
