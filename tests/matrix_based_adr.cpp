@@ -304,7 +304,7 @@ void MPIADRBenchmark<dim>::output_results(const unsigned int cycle)
   data_out.build_patches(mapping);
 
   data_out.write_vtu_with_pvtu_record(
-    "./", "adr_mb_mpi_solution", cycle, mpi_communicator, 3);
+    "./", "solution-matrix-based", cycle, mpi_communicator, 1);
 }
 
 template <int dim>

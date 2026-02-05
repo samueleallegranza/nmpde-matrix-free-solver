@@ -99,7 +99,7 @@ ADRProblem<dim>::ADRProblem(std::string param_filename)
     prm.enter_subsection("Data");
         std::map<std::string, double> constants;
         constants["pi"] = numbers::PI;
-        std::string variables = "x,y,z";
+        std::string variables = diffu_c.default_variable_names();
 
         std::string diffu_str = prm.get("Diffusion Coefficient");
         diffu_c.initialize(
@@ -409,7 +409,6 @@ void ADRProblem<dim>::assemble_rhs() {
 
     system_rhs = 0;
     FEEvaluation<dim, degree_finite_element> phi(*system_matrix.get_matrix_free());
-    ForceTerm<dim> f;
     for (unsigned int cell = 0; cell < system_matrix.get_matrix_free()->n_cell_batches(); ++cell) {
         phi.reinit(cell);
         //phi.evaluate(EvaluationFlags::values); We don't need this because we are assembly the RHS and we don't need to
@@ -429,13 +428,33 @@ void ADRProblem<dim>::assemble_rhs() {
 
         // This performs the actual integration with the values (multiplication by test functions and weights)
         phi.integrate(EvaluationFlags::values);
+
         phi.distribute_local_to_global(system_rhs);
     }
 
-    //!TODO verify Neumann boundary addition
-    // Neumann is a boundary flux and standard cell loops only iterate over the interior of the domain.
-    // Therefore, it cannot be in the loop above
-    // To handle Neumann boundaries in matrix-free: FEFaceEvaluation over the boundary faces.
+    FEFaceEvaluation<dim, degree_finite_element> phi_face(*system_matrix.get_matrix_free());
+
+    const types::boundary_id neumann_id = 1;
+
+    for (unsigned int b_face = 0; b_face < system_matrix.get_matrix_free()->n_boundary_face_batches(); ++b_face) {
+        if (system_matrix.get_matrix_free()->get_boundary_id(b_face) == neumann_id) {
+            phi_face.reinit(b_face);
+            for (unsigned int q = 0; q < phi_face.n_q_points; ++q) {
+                const Point<dim,VectorizedArray<double> > p_vect = phi_face.quadrature_point(q);
+                VectorizedArray<double> neumann_value = 0.0;
+                for (unsigned int v=0; v<VectorizedArray<double>::size(); ++v) {
+                    Point<dim> p;
+                    for (unsigned int d=0; d<dim; ++d) p[d] = p_vect[d][v];
+                    neumann_value[v] = neumann.value(p);
+                }
+                phi_face.submit_value(neumann_value, q);
+            }
+
+            // Integrate (multiply by test function v and Jacobian dS)
+            phi_face.integrate(EvaluationFlags::values);
+            phi_face.distribute_local_to_global(system_rhs);
+        }
+    }
 
     system_rhs.compress(VectorOperation::add);
 
@@ -545,7 +564,7 @@ void ADRProblem<dim>::output_results(std::string filename, const unsigned int cy
     DataOutBase::VtkFlags flags;
     flags.compression_level = DataOutBase::CompressionLevel::best_speed;
     data_out.set_flags(flags);
-    data_out.write_vtu_with_pvtu_record("./", filename, cycle, MPI_COMM_WORLD, 3);
+    data_out.write_vtu_with_pvtu_record("./", filename, cycle, MPI_COMM_WORLD, 1);
 
     pcout << "Time write output          (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << "s\n";
 }
@@ -565,6 +584,21 @@ void ADRProblem<dim>::run(unsigned int refinement, std::string filename) {
     triangulation.clear(); //clear previous data to allow re-initialization
     GridGenerator::hyper_cube(triangulation, 0., 1.);
     triangulation.refine_global(2 + refinement);
+
+    for (const auto &cell : triangulation.active_cell_iterators()){
+        for (const auto &face : cell->face_iterators()){
+            if (face->at_boundary()) {
+                const Point<dim> face_center = face->center();
+                if (std::abs(face_center[0] - 0.0) < 1e-10 || std::abs(face_center[1] - 0.0) < 1e-10) {
+                    face->set_boundary_id(0);
+                }
+
+                else if (std::abs(face_center[0] - 1.0) < 1e-10 || std::abs(face_center[1] - 1.0) < 1e-10) {
+                    face->set_boundary_id(1);
+                }
+            }
+        }
+    }
 
     setup_system();
     assemble_rhs();
