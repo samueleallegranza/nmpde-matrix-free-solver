@@ -2,7 +2,7 @@
 # ---------------------
 subsection Files
   # A .vtk file to save the solution to
-  set Output file = solution_mf
+  set Output file = solution_mb
 end
 
 

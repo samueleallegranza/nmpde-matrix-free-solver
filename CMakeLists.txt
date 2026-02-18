@@ -23,8 +23,13 @@ deal_ii_setup_target(matrix_free_test)
 target_link_libraries(matrix_free_test prm_handler)
 target_compile_options(matrix_free_test PRIVATE -UCGAL_DISABLE_ROUNDING_MATH_CHECK)
 
-
-add_executable(matrix_based_test tests/matrix_based_adr.cpp)
+add_executable(matrix_based_test
+        tests/matrix_based_adr.cpp
+        include/adr_mb_problem.hpp
+        include/general_definitions.hpp
+)
 deal_ii_setup_target(matrix_based_test)
+target_link_libraries(matrix_based_test prm_handler)
+target_compile_options(matrix_based_test PRIVATE -UCGAL_DISABLE_ROUNDING_MATH_CHECK)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter -Wno-float-conversion -frounding-math")

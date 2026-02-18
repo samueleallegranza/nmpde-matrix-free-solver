@@ -1,12 +1,3 @@
-/* ---------------------------------------------------------------------
- *
- * Matrix-free Advection-Diffusion-Reaction Solver + Memory Benchmarking
- *
- * Solves: - div(mu * grad(u)) + div(beta * u) + gamma * u = f
- *
- * ---------------------------------------------------------------------
- */
-
 #include <adr_operator.hpp>
 #include <adr_problem.hpp>
 #include <general_definitions.hpp>

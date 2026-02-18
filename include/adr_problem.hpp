@@ -40,7 +40,7 @@ private:
     LinearAlgebra::distributed::Vector<double> solution;
     LinearAlgebra::distributed::Vector<double> system_rhs;
 
-    double             setup_time;
+    double setup_time;
     ConditionalOStream pcout;
     ConditionalOStream time_details;
 };

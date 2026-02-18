@@ -24,7 +24,6 @@
 #include <deal.II/multigrid/multigrid.h>
 #include <deal.II/multigrid/mg_transfer_matrix_free.h>
 #include <deal.II/multigrid/mg_tools.h>
-#include <deal.II/multigrid/mg_coarse.h>
 #include <deal.II/multigrid/mg_smoother.h>
 #include <deal.II/multigrid/mg_matrix.h>
 
@@ -38,13 +37,26 @@
 #include <deal.II/base/function_parser.h>
 #include <deal.II/base/parameter_handler.h>
 
+#include <deal.II/multigrid/mg_constrained_dofs.h>
+#include <deal.II/multigrid/multigrid.h>
+#include <deal.II/multigrid/mg_transfer.h>
+#include <deal.II/multigrid/mg_tools.h>
+#include <deal.II/multigrid/mg_coarse.h>
+#include <deal.II/multigrid/mg_smoother.h>
+#include <deal.II/multigrid/mg_matrix.h>
+
+#include <deal.II/meshworker/mesh_loop.h>
+#include <deal.II/numerics/error_estimator.h>
+
+#include <deal.II/grid/grid_generator.h>
+#include <deal.II/grid/grid_refinement.h>
+
 #include <sys/resource.h>
 #include <filesystem>
 #include <iostream>
 #include <fstream>
 
 const unsigned int degree_finite_element = 2;
-const unsigned int dimension             = 3;
 
 #ifdef CGAL_DISABLE_ROUNDING_MATH_CHECK
 #undef CGAL_DISABLE_ROUNDING_MATH_CHECK
