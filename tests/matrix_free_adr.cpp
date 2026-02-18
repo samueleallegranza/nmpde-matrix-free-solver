@@ -7,7 +7,6 @@
  * ---------------------------------------------------------------------
  */
 
-#include <default_coefficient.hpp>
 #include <adr_operator.hpp>
 #include <adr_problem.hpp>
 #include <general_definitions.hpp>
@@ -21,7 +20,7 @@ int main(int argc, char *argv[]) {
 
         ADRProblem<2> adr_problem;
 
-        for (unsigned int refinement_cycle = 0; refinement_cycle < 2; refinement_cycle++) {
+        for (unsigned int refinement_cycle = 0; refinement_cycle < 3; refinement_cycle++) {
             adr_problem.run(refinement_cycle,"../input/params/test_mf.prm");
         }
 

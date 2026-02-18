@@ -16,7 +16,7 @@ private:
     void assemble_rhs();
     void solve();
     void output_results(const unsigned int cycle = 0) const;
-    void print_memory_usage(const std::string &stage) const; // Added
+    void print_memory_usage() const; // Added
 
     #ifdef DEAL_II_WITH_P4EST
         parallel::distributed::Triangulation<dim, dim> triangulation;
@@ -71,25 +71,42 @@ ADRProblem<dim>::ADRProblem() :
 }
 
 
-//! TODO to remove
 template <int dim>
-void ADRProblem<dim>::print_memory_usage(const std::string &stage) const {
-      struct rusage usage;
-      getrusage(RUSAGE_SELF, &usage);
-      double local_memory_mb = usage.ru_maxrss / 1024.0;
+void ADRProblem<dim>::print_memory_usage() const {
+    pcout << "----------------------------------------------------" << std::endl;
+    pcout << "Memory Consumption:" << std::endl;
 
-      // macOS correction (KB -> MB) vs Linux (already KB)
-      #ifdef __APPLE__
-        local_memory_mb /= 1024.0;
-      #endif
+    // Grid and DoFs (Base mesh connectivity)
+    std::size_t mem_tria = triangulation.memory_consumption();
+    std::size_t mem_dofs = dof_handler.memory_consumption();
 
-      double max_memory_mb = Utilities::MPI::max(local_memory_mb, MPI_COMM_WORLD);
-      double min_memory_mb = Utilities::MPI::min(local_memory_mb, MPI_COMM_WORLD);
+    // System Matrix (Matrix-Free Level 0)
+    // This includes precomputed Shape Gradients, JxW, Normal Vectors, etc.
+    std::size_t mem_mf_sys = system_matrix.memory_consumption();
 
-      pcout << "  Memory (" << stage << "):        "
-            << "Max: " << max_memory_mb << " MB / Min: " << min_memory_mb << " MB"
-            << std::endl;
-  }
+    // Multigrid Levels (Matrix-Free Levels > 0)
+    std::size_t mem_mf_mg = 0;
+    for (unsigned int level = 0; level < triangulation.n_global_levels(); ++level) {
+        mem_mf_mg += mg_matrices[level].memory_consumption();
+    }
+
+    // Vectors (Solution + RHS)
+    std::size_t mem_vec = solution.memory_consumption() + system_rhs.memory_consumption();
+
+    // Convert to MB for readability
+    const double to_MB = 1.0 / (1024.0 * 1024.0);
+
+    pcout << "  Triangulation:        " << mem_tria * to_MB << " MB" << std::endl;
+    pcout << "  DoFHandler:           " << mem_dofs * to_MB << " MB" << std::endl;
+    pcout << "  Matrix-free operator: " << mem_mf_sys * to_MB << " MB" << std::endl;
+    pcout << "  Multigrid matrices:   " << mem_mf_mg * to_MB << " MB" << std::endl;
+    pcout << "  Vectors (Sol+RHS):    " << mem_vec * to_MB << " MB" << std::endl;
+    pcout << "----------------------------------------------------" << std::endl;
+
+    std::size_t total = mem_tria + mem_dofs + mem_mf_sys + mem_mf_mg + mem_vec;
+    pcout << "  TOTAL:                " << total * to_MB << " MB" << std::endl;
+    pcout << "----------------------------------------------------" << std::endl;
+}
 
 
 template <int dim>
@@ -217,9 +234,6 @@ void ADRProblem<dim>::setup_system(std::string param_filename) {
     }
     setup_time += time.wall_time();
     time_details << "Setup matrix-free levels   (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << 's' << std::endl;
-
-    //! TODO remove
-    print_memory_usage("After Setup"); // Log memory
 }
 
 
@@ -298,8 +312,6 @@ void ADRProblem<dim>::assemble_rhs() {
 
     setup_time += time.wall_time();
     time_details << "Assemble right hand side   (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << 's' << std::endl;
-
-    print_memory_usage("After Assembly"); // Log memory
 }
 
 
@@ -377,9 +389,7 @@ void ADRProblem<dim>::solve() {
     constraints.distribute(solution);
 
     pcout << "Time solve (" << solver_control.last_step() << " iterations)" << (solver_control.last_step() < 10 ? "  " : " ") << "(CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << "s\n";
-
-    print_memory_usage("After Solve"); // Log memory
-  }
+}
 
 
 template <int dim>
@@ -426,6 +436,7 @@ void ADRProblem<dim>::run(unsigned int refinement,std::string param_filename) {
     setup_system(param_filename);
     assemble_rhs();
     solve();
+    print_memory_usage();
     output_results(refinement);
 }
 

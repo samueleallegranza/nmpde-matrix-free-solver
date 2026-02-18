@@ -21,6 +21,8 @@ public:
 
     virtual void compute_diagonal() override;
 
+    std::size_t memory_consumption() const override;
+
     Table<2, VectorizedArray<number>>                  mu_values;
     Table<2, Tensor<1, dim, VectorizedArray<number>>>  beta_values;
     Table<2, VectorizedArray<number>>                  gamma_values;
@@ -201,6 +203,19 @@ void ADROperator<dim, fe_degree, number>::compute_diagonal() {
     //   else
     //       inverse_diagonal.local_element(i) = 1.0;
     }
+}
+
+
+template <int dim, int fe_degree, typename number>
+std::size_t ADROperator<dim, fe_degree, number>::memory_consumption() const {
+    std::size_t memory = 0;
+
+    memory += MatrixFreeOperators::Base<dim, LinearAlgebra::distributed::Vector<number>>::memory_consumption();
+    memory += mu_values.memory_consumption();
+    memory += beta_values.memory_consumption();
+    memory += gamma_values.memory_consumption();
+
+    return memory;
 }
 
 
