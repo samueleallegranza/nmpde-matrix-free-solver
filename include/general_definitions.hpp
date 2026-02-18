@@ -72,5 +72,4 @@ const unsigned int dimension             = 3;
 #define LOG(val) pcout << LOG_PREFIX << YELLOW << val << CYAN << LOG_SUFFIX <<std::endl;
 #endif
 
-
 #endif //PROJECT7_MATRIXFREE_GENERAL_DEFINITIONS_HPP
