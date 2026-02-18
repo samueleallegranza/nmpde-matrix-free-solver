@@ -305,11 +305,19 @@ void ADRProblem<dim>::setup_system() {
     constraints.reinit(locally_relevant_dofs);
     DoFTools::make_hanging_node_constraints(dof_handler, constraints);
 
+    std::set<types::boundary_id> dirichlet_boundary_ids = {0,1,2,3};
+    Functions::ConstantFunction<dim> d(0);
+
+    std::map<types::boundary_id, const Function<dim> *> dirichlet_boundary_functions;
+    dirichlet_boundary_functions[0] = &dirichlet;
+    dirichlet_boundary_functions[1] = &dirichlet;
+    dirichlet_boundary_functions[2] = &d;
+    dirichlet_boundary_functions[3] = &d;
+
     VectorTools::interpolate_boundary_values(
         mapping,
         dof_handler,
-        0,
-        dirichlet,
+        dirichlet_boundary_functions,
         constraints
     );
     constraints.close();
@@ -329,6 +337,14 @@ void ADRProblem<dim>::setup_system() {
             update_JxW_values |
             update_quadrature_points |
             update_values
+            );
+
+        additional_data.mapping_update_flags_boundary_faces = (
+            update_values |
+            update_JxW_values |
+            update_quadrature_points |
+            update_normal_vectors |
+            update_gradients
             );
 
         std::shared_ptr<MatrixFree<dim, double>> system_mf_storage(new MatrixFree<dim, double>());
@@ -354,7 +370,6 @@ void ADRProblem<dim>::setup_system() {
     const unsigned int nlevels = triangulation.n_global_levels();
     mg_matrices.resize(0, nlevels - 1);
 
-    const std::set<types::boundary_id> dirichlet_boundary_ids = {0};
     mg_constrained_dofs.initialize(dof_handler);
     // initialize dof for boundaries on level 0 of multigrid
     mg_constrained_dofs.make_zero_boundary_constraints(dof_handler,dirichlet_boundary_ids);
@@ -411,7 +426,7 @@ void ADRProblem<dim>::assemble_rhs() {
     FEEvaluation<dim, degree_finite_element> phi(*system_matrix.get_matrix_free());
     for (unsigned int cell = 0; cell < system_matrix.get_matrix_free()->n_cell_batches(); ++cell) {
         phi.reinit(cell);
-        //phi.evaluate(EvaluationFlags::values); We don't need this because we are assembly the RHS and we don't need to
+        // phi.evaluate(EvaluationFlags::values); // We don't need this because we are assembly the RHS and we don't need to
         //"evaluate" anything from a solution vector.
         for (unsigned int q = 0; q < phi.n_q_points; ++q) {
             const Point<dim,VectorizedArray<double> > p_vect =phi.quadrature_point(q);
@@ -434,10 +449,9 @@ void ADRProblem<dim>::assemble_rhs() {
 
     FEFaceEvaluation<dim, degree_finite_element> phi_face(*system_matrix.get_matrix_free());
 
-    const types::boundary_id neumann_id = 1;
-
     for (unsigned int b_face = 0; b_face < system_matrix.get_matrix_free()->n_boundary_face_batches(); ++b_face) {
-        if (system_matrix.get_matrix_free()->get_boundary_id(b_face) == neumann_id) {
+        int face_id = system_matrix.get_matrix_free()->get_boundary_id(b_face);
+        if (false && face_id == 2) {
             phi_face.reinit(b_face);
             for (unsigned int q = 0; q < phi_face.n_q_points; ++q) {
                 const Point<dim,VectorizedArray<double> > p_vect = phi_face.quadrature_point(q);
@@ -445,7 +459,7 @@ void ADRProblem<dim>::assemble_rhs() {
                 for (unsigned int v=0; v<VectorizedArray<double>::size(); ++v) {
                     Point<dim> p;
                     for (unsigned int d=0; d<dim; ++d) p[d] = p_vect[d][v];
-                    neumann_value[v] = neumann.value(p);
+                    neumann_value[v] = neumann.value(p) / diffu_c.value(p); // TODO: nabla( u ) * n = gamma / mu = h
                 }
                 phi_face.submit_value(neumann_value, q);
             }
@@ -582,23 +596,23 @@ void ADRProblem<dim>::run(unsigned int refinement, std::string filename) {
             << std::endl;
 
     triangulation.clear(); //clear previous data to allow re-initialization
-    GridGenerator::hyper_cube(triangulation, 0., 1.);
-    triangulation.refine_global(2 + refinement);
+    GridGenerator::hyper_cube(triangulation, 0., 1., true);
+    triangulation.refine_global(5 + refinement);
 
-    for (const auto &cell : triangulation.active_cell_iterators()){
-        for (const auto &face : cell->face_iterators()){
-            if (face->at_boundary()) {
-                const Point<dim> face_center = face->center();
-                if (std::abs(face_center[0] - 0.0) < 1e-10 || std::abs(face_center[1] - 0.0) < 1e-10) {
-                    face->set_boundary_id(0);
-                }
-
-                else if (std::abs(face_center[0] - 1.0) < 1e-10 || std::abs(face_center[1] - 1.0) < 1e-10) {
-                    face->set_boundary_id(1);
-                }
-            }
-        }
-    }
+    // for (const auto &cell : triangulation.active_cell_iterators()){
+    //     for (const auto &face : cell->face_iterators()){
+    //         if (face->at_boundary()) {
+    //             const Point<dim> face_center = face->center();
+    //             if (std::abs(face_center[0] - 0.0) < 1e-10 || std::abs(face_center[1] - 0.0) < 1e-10) {
+    //                 face->set_boundary_id(0);
+    //             }
+    //
+    //             else if (std::abs(face_center[0] - 1.0) < 1e-10 || std::abs(face_center[1] - 1.0) < 1e-10) {
+    //                 face->set_boundary_id(1);   // top and bottom → Neumann
+    //             }
+    //         }
+    //     }
+    // }
 
     setup_system();
     assemble_rhs();

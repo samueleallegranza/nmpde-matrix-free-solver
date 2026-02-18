@@ -1,0 +1,43 @@
+# Listing of Parameters
+# ---------------------
+subsection Algebraic Solver
+  # The maximum number of iterations to be performed by the linear solver
+  set Max iterations = 500
+
+  # The preconditioner to be used with the linear solver
+  set Preconditioner = Jacobi
+
+  # The linear solver to be used
+  set Solver         = GMRES
+
+  # The tolerance for the linear solver (it will be multiplied by the L^2 norm
+  # of the rhs)
+  set Tolerance      = 1.0e-16
+end
+
+
+subsection Data
+  # The x value of the advection coefficient of the PDE
+  set Advection Coefficient x value = 1.0
+
+  # The y value of the advection coefficient of the PDE
+  set Advection Coefficient y value = 1.0
+
+  # The z value of the advection coefficient of the PDE
+  set Advection Coefficient z value = 0
+
+  # The diffusion coefficient of the PDE
+  set Diffusion Coefficient         = 1
+
+  # The function to be applied at the Dirichlet boundary
+  set Dirichlet Boundary function   = 0.0
+
+  # The force term (aka the rhs of the equation: Lu=f in Omega )
+  set Force term                    = (1 + 5/4 * pi * pi) * sin(pi*x) * sin((pi*y)/2) + (pi * cos(pi * x)*sin((pi*y)/2)) + (pi/2 * sin(pi * x) * cos((pi*y)/2))
+
+  # The function to be applied at the Neumann boundary
+  set Neumann Boundary function     = (- pi/2) * sin(pi * x)
+
+  # The reaction coefficient of the PDE
+  set Reaction Coefficient          = 1.0
+end

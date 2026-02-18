@@ -104,7 +104,9 @@ void ADROperator<dim, fe_degree, number>::evaluate_coefficients(
                 Point<dim> p;
                 for (unsigned int d=0; d<dim; ++d) p[d] = p_vect[d][v];
                 diffu_value[v] = diffu_f.value(p);
-                advec_value[v] = advec_f.value(p);
+                advec_value[0][v] = advec_f.value(p,0);
+                if constexpr (dim >= 2) advec_value[1][v] = advec_f.value(p,1);
+                if constexpr (dim >= 3) advec_value[2][v] = advec_f.value(p,2);
                 react_value[v] = react_f.value(p);
             }
             mu_values(cell, q) = diffu_value;
