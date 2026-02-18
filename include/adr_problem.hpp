@@ -4,20 +4,20 @@
 #include <general_definitions.hpp>
 #include <default_coefficient.hpp>
 #include <adr_operator.hpp>
+#include <prm_handler.hpp>
 
 template <int dim>
-class ADRProblem {
+class ADRProblem : public ADR::EllipticParamHandler<dim> {
 public:
-    ADRProblem(std::string param_filename);
-    void run(unsigned int refinement, std::string filename);
+    ADRProblem();
+    void run(unsigned int refinement,std::string param_filename);
 
 private:
-    void setup_system();
+    void setup_system(std::string param_filename);
     void assemble_rhs();
     void solve();
-    void output_results(std::string filename, const unsigned int cycle = 0) const;
+    void output_results(const unsigned int cycle = 0) const;
     void print_memory_usage(const std::string &stage) const; // Added
-    void declare_parameters();
 
     #ifdef DEAL_II_WITH_P4EST
         parallel::distributed::Triangulation<dim, dim> triangulation;
@@ -44,30 +44,20 @@ private:
     double             setup_time;
     ConditionalOStream pcout;
     ConditionalOStream time_details;
-
-    ParameterHandler prm;
-    int max_iterations;
-    double tolerance;
-    bool use_jacobi,use_gmres;
-    FunctionParser<dim> diffu_c;
-    FunctionParser<dim> advec_c;
-    FunctionParser<dim> react_c;
-    FunctionParser<dim> force;
-    FunctionParser<dim> dirichlet;
-    FunctionParser<dim> neumann;
 };
 
 
 template <int dim>
-ADRProblem<dim>::ADRProblem(std::string param_filename)
+ADRProblem<dim>::ADRProblem() :
+    ADR::EllipticParamHandler<dim>(),
 #ifdef DEAL_II_WITH_P4EST
-    : triangulation(
+    triangulation(
         MPI_COMM_WORLD,
         Triangulation<dim>::limit_level_difference_at_vertices,
         parallel::distributed::Triangulation<dim, dim>::construct_multigrid_hierarchy
         )
 #else
-    : triangulation(Triangulation<dim>::limit_level_difference_at_vertices)
+    triangulation(Triangulation<dim>::limit_level_difference_at_vertices)
 #endif
     , fe(degree_finite_element)
     , dof_handler(triangulation)
@@ -78,96 +68,10 @@ ADRProblem<dim>::ADRProblem(std::string param_filename)
         false &&
         Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0
         )
-    , diffu_c(1)
-    , advec_c(dim)
-    , react_c(1)
-    , force(1)
-    , dirichlet(1)
-    , neumann(1)
 {
-    declare_parameters();
-    prm.parse_input(param_filename);
-
-    prm.enter_subsection("Algebraic Solver");
-    {
-        max_iterations = prm.get_integer("Max iterations");
-        tolerance = prm.get_double("Tolerance");
-        use_jacobi = prm.get("Preconditioner") == "Jacobi";
-        use_gmres = prm.get("Solver") == "GMRES";
-        prm.leave_subsection();
-    }
-    prm.enter_subsection("Data");
-        std::map<std::string, double> constants;
-        constants["pi"] = numbers::PI;
-        std::string variables = diffu_c.default_variable_names();
-
-        std::string diffu_str = prm.get("Diffusion Coefficient");
-        diffu_c.initialize(
-            variables,
-            diffu_str,
-            constants
-        );
-
-        std::vector<std::string> advec_strs(dim);
-        if constexpr (dim >= 1)
-            advec_strs[0] = prm.get("Advection Coefficient x value");
-        if constexpr (dim >= 2)
-            advec_strs[1] = prm.get("Advection Coefficient y value");
-        if constexpr (dim >= 3)
-            advec_strs[2] = prm.get("Advection Coefficient z value");
-
-        advec_c.initialize(
-            variables,
-            advec_strs,
-            constants
-        );
-
-        std::string react_str = prm.get("Reaction Coefficient");
-        react_c.initialize(
-            variables,
-            react_str,
-            constants
-        );
-
-        std::string force_str = prm.get("Force term");
-        force.initialize(
-            variables,
-            force_str,
-            constants
-        );
-
-        std::string dirichlet_str = prm.get("Dirichlet Boundary function");
-        dirichlet.initialize(
-            variables,
-            dirichlet_str,
-            constants
-        );
-
-        std::string neumann_str = prm.get("Neumann Boundary function");
-        neumann.initialize(
-            variables,
-            neumann_str,
-            constants
-        );
-    prm.leave_subsection();
-
-    LOG_TITLE("Parameters were read successfully");
-    LOG_VAR("Max number of iters",max_iterations);
-    LOG_VAR("Tolerance",tolerance);
-    LOG_VAR("Preconditioner", (use_jacobi ? "Jacobi" : "Chebyshev"));
-    LOG_VAR("Solver", (use_gmres ? "GMRES" : "CG"));
-    LOG_VAR("mu(x,y,z)",diffu_str);
-    if constexpr (dim >= 1)
-        LOG_VAR("beta_x(x,y,z)",advec_strs[0]);
-    if constexpr (dim >= 2)
-        LOG_VAR("beta_y(x,y,z)",advec_strs[1]);
-    if constexpr (dim >= 3)
-        LOG_VAR("beta_z(x,y,z)",advec_strs[2]);
-    LOG_VAR("gamma(x,y,z)",react_str);
-    LOG_VAR("f(x,y,z)",force_str);
-    LOG_VAR("g(x,y,z)",dirichlet_str);
-    LOG_VAR("h(x,y,z)",neumann_str);
 }
+
+
 //! TODO to remove
 template <int dim>
 void ADRProblem<dim>::print_memory_usage(const std::string &stage) const {
@@ -188,105 +92,10 @@ void ADRProblem<dim>::print_memory_usage(const std::string &stage) const {
             << std::endl;
   }
 
-template<int dim>
-void ADRProblem<dim>::declare_parameters() {
-    prm.enter_subsection("Algebraic Solver");
-    {
-        prm.declare_entry(
-            "Max iterations",
-            "500",
-            Patterns::Integer(),
-            "The maximum number of iterations to be performed by the linear solver"
-        );
-        prm.declare_entry(
-            "Tolerance",
-            "1.0e-12",
-            Patterns::Double(),
-            "The tolerance for the linear solver (it will be multiplied by the L^2 norm of the rhs)"
-        );
-        prm.declare_entry(
-            "Solver",
-            "GMRES",
-            Patterns::Selection("GMRES|CG"),
-            "The linear solver to be used"
-        );
-        prm.declare_entry(
-            "Preconditioner",
-            "Jacobi",
-            Patterns::Selection("Jacobi|Chebyshev"),
-            "The preconditioner to be used with the linear solver"
-        );
-    }
-    prm.leave_subsection();
-
-    prm.enter_subsection("Data");
-    {
-        prm.declare_entry(
-            "Diffusion Coefficient",
-            "1",
-            Patterns::Anything(),
-            "The diffusion coefficient of the PDE",
-            true
-        );
-        prm.declare_entry(
-            "Reaction Coefficient",
-            "0",
-            Patterns::Anything(),
-            "The reaction coefficient of the PDE",
-            false
-        );
-        prm.declare_entry(
-            "Advection Coefficient x value",
-            "0",
-            Patterns::Anything(),
-            "The x value of the advection coefficient of the PDE",
-            false
-        );
-        prm.declare_entry(
-            "Advection Coefficient y value",
-            "0",
-            Patterns::Anything(),
-            "The y value of the advection coefficient of the PDE",
-            false
-        );
-        prm.declare_entry(
-            "Advection Coefficient z value",
-            "0",
-            Patterns::Anything(),
-            "The z value of the advection coefficient of the PDE",
-            false
-        );
-        prm.declare_entry(
-            "Force term",
-            "0",
-            Patterns::Anything(),
-            "The force term (aka the rhs of the equation: Lu=f in Omega )",
-            false
-        );
-        prm.declare_entry(
-            "Dirichlet Boundary function",
-            "0",
-            Patterns::Anything(),
-            "The function to be applied at the Dirichlet boundary",
-            false
-        );
-        prm.declare_entry(
-            "Neumann Boundary function",
-            "0",
-            Patterns::Anything(),
-            "The function to be applied at the Neumann boundary",
-            false
-        );
-    }
-    prm.leave_subsection();
-    // #if defined(BUILD_TYPE_DEBUG)
-    // prm.print_parameters("default_parameters.xml",ParameterHandler::XML);
-    // #endif
-}
-
-
 template <int dim>
-void ADRProblem<dim>::setup_system() {
+void ADRProblem<dim>::setup_system(std::string param_filename) {
+
+    this->init(param_filename);
 
     Timer time;
     setup_time = 0;
@@ -305,19 +114,14 @@ void ADRProblem<dim>::setup_system() {
     constraints.reinit(locally_relevant_dofs);
     DoFTools::make_hanging_node_constraints(dof_handler, constraints);
 
-    std::set<types::boundary_id> dirichlet_boundary_ids = {0,1,2,3};
-    Functions::ConstantFunction<dim> d(0);
-
-    std::map<types::boundary_id, const Function<dim> *> dirichlet_boundary_functions;
-    dirichlet_boundary_functions[0] = &dirichlet;
-    dirichlet_boundary_functions[1] = &dirichlet;
-    dirichlet_boundary_functions[2] = &d;
-    dirichlet_boundary_functions[3] = &d;
+    std::map<types::boundary_id, const Function<dim> *> boundary_functions;
+    for (long unsigned int i = 0; i < this->dirichlet_bc_tags.size(); i++)
+        boundary_functions[this->dirichlet_bc_tags[i]] = this->dirichlet_bc[i].get();
 
     VectorTools::interpolate_boundary_values(
         mapping,
         dof_handler,
-        dirichlet_boundary_functions,
+        boundary_functions,
         constraints
     );
     constraints.close();
@@ -358,7 +162,7 @@ void ADRProblem<dim>::setup_system() {
         system_matrix.initialize(system_mf_storage);
     }
 
-    system_matrix.evaluate_coefficients(diffu_c, advec_c, react_c);
+    system_matrix.evaluate_coefficients(this->diffusion_c, this->advection_c, this->reaction_c);
 
     system_matrix.initialize_dof_vector(solution);
     system_matrix.initialize_dof_vector(system_rhs);
@@ -372,7 +176,8 @@ void ADRProblem<dim>::setup_system() {
 
     mg_constrained_dofs.initialize(dof_handler);
     // initialize dof for boundaries on level 0 of multigrid
-    mg_constrained_dofs.make_zero_boundary_constraints(dof_handler,dirichlet_boundary_ids);
+    std::set<types::boundary_id> boundary_ids(this->dirichlet_bc_tags.begin(), this->dirichlet_bc_tags.end());
+    mg_constrained_dofs.make_zero_boundary_constraints(dof_handler,boundary_ids);
 
     // initialize matrix free system for level>=1 of MG
     for (unsigned int level = 0; level < nlevels; ++level) {
@@ -400,7 +205,7 @@ void ADRProblem<dim>::setup_system() {
             level_constraints,
             QGauss<1>(fe.degree + 1),
             additional_data
-            );
+        );
 
         mg_matrices[level].initialize(
             mg_mf_storage_level,
@@ -408,7 +213,7 @@ void ADRProblem<dim>::setup_system() {
             level
             );
 
-        mg_matrices[level].evaluate_coefficients(diffu_c,advec_c,react_c);
+        mg_matrices[level].evaluate_coefficients(this->diffusion_c,this->advection_c,this->reaction_c);
     }
     setup_time += time.wall_time();
     time_details << "Setup matrix-free levels   (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << 's' << std::endl;
@@ -422,19 +227,36 @@ template <int dim>
 void ADRProblem<dim>::assemble_rhs() {
     Timer time;
 
+    solution = 0;
+    constraints.distribute(solution);
+    solution.update_ghost_values();
     system_rhs = 0;
+
+    Table<2, VectorizedArray<double>> &mu_values = system_matrix.mu_values;
+    Table<2, Tensor<1, dim, VectorizedArray<double>>> &beta_values = system_matrix.beta_values;
+    Table<2, VectorizedArray<double>> &gamma_values = system_matrix.gamma_values;
+
     FEEvaluation<dim, degree_finite_element> phi(*system_matrix.get_matrix_free());
+
     for (unsigned int cell = 0; cell < system_matrix.get_matrix_free()->n_cell_batches(); ++cell) {
         phi.reinit(cell);
-        // phi.evaluate(EvaluationFlags::values); // We don't need this because we are assembly the RHS and we don't need to
-        //"evaluate" anything from a solution vector.
+        phi.read_dof_values_plain(solution);
+        phi.evaluate(EvaluationFlags::gradients | EvaluationFlags::values);
+
         for (unsigned int q = 0; q < phi.n_q_points; ++q) {
-            const Point<dim,VectorizedArray<double> > p_vect =phi.quadrature_point(q);
+            const Point<dim,VectorizedArray<double> > p_vect = phi.quadrature_point(q);
+
+            const auto u_val  = phi.get_value(q);
+            const auto u_grad = phi.get_gradient(q);
+
+            phi.submit_gradient(-mu_values(cell, q) * u_grad, q);
+            phi.submit_value(-beta_values(cell, q) * u_grad -gamma_values(cell, q) * u_val, q);
+
             VectorizedArray<double> f_value = 0.0;
             for (unsigned int v=0; v<VectorizedArray<double>::size(); ++v) {
                 Point<dim> p;
                 for (unsigned int d=0; d<dim; ++d) p[d] = p_vect[d][v];
-                f_value[v] = force.value(p);
+                f_value[v] = this->force_term.value(p);
             }
             //phi.submit_value((f.value(phi.quadrature_point(q))  + neumann.value(phi.quadrature_point(q)) ) * phi.get_value(q), q);
             // We submit the value of the force term at the quadrature point.
@@ -442,7 +264,7 @@ void ADRProblem<dim>::assemble_rhs() {
         }
 
         // This performs the actual integration with the values (multiplication by test functions and weights)
-        phi.integrate(EvaluationFlags::values);
+        phi.integrate(EvaluationFlags::values | EvaluationFlags::gradients);
 
         phi.distribute_local_to_global(system_rhs);
     }
@@ -450,16 +272,18 @@ void ADRProblem<dim>::assemble_rhs() {
     FEFaceEvaluation<dim, degree_finite_element> phi_face(*system_matrix.get_matrix_free());
 
     for (unsigned int b_face = 0; b_face < system_matrix.get_matrix_free()->n_boundary_face_batches(); ++b_face) {
-        int face_id = system_matrix.get_matrix_free()->get_boundary_id(b_face);
-        if (false && face_id == 2) {
+        auto face_id = system_matrix.get_matrix_free()->get_boundary_id(b_face);
+        auto pos = std::find(this->neumann_bc_tags.begin(),this->neumann_bc_tags.end(),face_id);
+        if (pos != this->neumann_bc_tags.end()) {
             phi_face.reinit(b_face);
+            auto neumann_index = pos - this->neumann_bc_tags.begin();
             for (unsigned int q = 0; q < phi_face.n_q_points; ++q) {
                 const Point<dim,VectorizedArray<double> > p_vect = phi_face.quadrature_point(q);
                 VectorizedArray<double> neumann_value = 0.0;
                 for (unsigned int v=0; v<VectorizedArray<double>::size(); ++v) {
                     Point<dim> p;
                     for (unsigned int d=0; d<dim; ++d) p[d] = p_vect[d][v];
-                    neumann_value[v] = neumann.value(p) / diffu_c.value(p); // TODO: nabla( u ) * n = gamma / mu = h
+                    neumann_value[v] = this->neumann_bc[neumann_index]->value(p) / this->diffusion_c.value(p); // nabla( u ) * n = gamma / mu = h
                 }
                 phi_face.submit_value(neumann_value, q);
             }
@@ -526,7 +350,7 @@ void ADRProblem<dim>::solve() {
     PreconditionMG<dim,LinearAlgebra::distributed::Vector<float>,MGTransferMatrixFree<dim, float>> preconditioner(dof_handler, mg, mg_transfer);
 
     //! TODO put as problem
-    SolverControl solver_control(max_iterations, tolerance * system_rhs.l2_norm());
+    SolverControl solver_control(this->max_iters, this->epsilon * system_rhs.l2_norm());
 
     typename SolverGMRES<LinearAlgebra::distributed::Vector<double>>::AdditionalData gmres_data;
     //! TODO try both and see which is best (empirically) and relation to true error for both
@@ -559,7 +383,7 @@ void ADRProblem<dim>::solve() {
 
 
 template <int dim>
-void ADRProblem<dim>::output_results(std::string filename, const unsigned int cycle) const {
+void ADRProblem<dim>::output_results(const unsigned int cycle) const {
     Timer time;
 
     // do not output for big meshes
@@ -578,7 +402,7 @@ void ADRProblem<dim>::output_results(std::string filename, const unsigned int cy
     DataOutBase::VtkFlags flags;
     flags.compression_level = DataOutBase::CompressionLevel::best_speed;
     data_out.set_flags(flags);
-    data_out.write_vtu_with_pvtu_record("./", filename, cycle, MPI_COMM_WORLD, 1);
+    data_out.write_vtu_with_pvtu_record("./", this->output_filename, cycle, MPI_COMM_WORLD, 1);
 
     pcout << "Time write output          (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << "s\n";
 }
@@ -586,7 +410,7 @@ void ADRProblem<dim>::output_results(std::string filename, const unsigned int cy
 
 //! TODO extract for to be on the user side
 template <int dim>
-void ADRProblem<dim>::run(unsigned int refinement, std::string filename) {
+void ADRProblem<dim>::run(unsigned int refinement,std::string param_filename) {
     const unsigned int n_vect_doubles = VectorizedArray<double>::size();
     const unsigned int n_vect_bits    = 8 * sizeof(double) * n_vect_doubles;
 
@@ -597,27 +421,12 @@ void ADRProblem<dim>::run(unsigned int refinement, std::string filename) {
 
     triangulation.clear(); //clear previous data to allow re-initialization
     GridGenerator::hyper_cube(triangulation, 0., 1., true);
-    triangulation.refine_global(5 + refinement);
+    triangulation.refine_global(3 + refinement);
 
-    // for (const auto &cell : triangulation.active_cell_iterators()){
-    //     for (const auto &face : cell->face_iterators()){
-    //         if (face->at_boundary()) {
-    //             const Point<dim> face_center = face->center();
-    //             if (std::abs(face_center[0] - 0.0) < 1e-10 || std::abs(face_center[1] - 0.0) < 1e-10) {
-    //                 face->set_boundary_id(0);
-    //             }
-    //
-    //             else if (std::abs(face_center[0] - 1.0) < 1e-10 || std::abs(face_center[1] - 1.0) < 1e-10) {
-    //                 face->set_boundary_id(1);   // top and bottom → Neumann
-    //             }
-    //         }
-    //     }
-    // }
-
-    setup_system();
+    setup_system(param_filename);
     assemble_rhs();
     solve();
-    output_results(filename, refinement);
+    output_results(refinement);
 }
 
 #endif //PROJECT7_MATRIXFREE_ADR_PROBLEM_HPP

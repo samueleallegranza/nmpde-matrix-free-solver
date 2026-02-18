@@ -22,6 +22,10 @@ public:
 
     virtual void compute_diagonal() override;
 
+    Table<2, VectorizedArray<number>>                  mu_values;
+    Table<2, Tensor<1, dim, VectorizedArray<number>>>  beta_values;
+    Table<2, VectorizedArray<number>>                  gamma_values;
+
 private:
     virtual void apply_add(
       LinearAlgebra::distributed::Vector<number> &      dst,
@@ -38,10 +42,6 @@ private:
       LinearAlgebra::distributed::Vector<number> & dst,
       const unsigned int &                         dummy,
       const std::pair<unsigned int, unsigned int> &cell_range) const;
-
-    Table<2, VectorizedArray<number>>                  mu_values;
-    Table<2, Tensor<1, dim, VectorizedArray<number>>>  beta_values;
-    Table<2, VectorizedArray<number>>                  gamma_values;
 };
 
 template <typename MatrixType>

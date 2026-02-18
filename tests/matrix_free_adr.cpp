@@ -19,10 +19,10 @@ int main(int argc, char *argv[]) {
 
         Utilities::MPI::MPI_InitFinalize mpi_init(argc, argv,1);
 
-        ADRProblem<2> adr_problem("../input/params/parameters_g.xml");;
+        ADRProblem<2> adr_problem;
 
-        for (unsigned int refinement_cycle = 0; refinement_cycle < 3; refinement_cycle++) {
-            adr_problem.run(refinement_cycle, "solution-matrix-free");
+        for (unsigned int refinement_cycle = 0; refinement_cycle < 2; refinement_cycle++) {
+            adr_problem.run(refinement_cycle,"../input/params/test_mf.prm");
         }
 
     }

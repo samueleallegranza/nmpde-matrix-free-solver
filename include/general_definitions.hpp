@@ -46,6 +46,10 @@
 const unsigned int degree_finite_element = 2;
 const unsigned int dimension             = 3;
 
+#ifdef CGAL_DISABLE_ROUNDING_MATH_CHECK
+#undef CGAL_DISABLE_ROUNDING_MATH_CHECK
+#endif
+
 #define MAX_OUTPUT_MESH_ELEMENTS 1000000
 
 #if !defined(BUILD_TYPE_DEBUG)
