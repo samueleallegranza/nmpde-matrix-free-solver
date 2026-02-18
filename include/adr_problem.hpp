@@ -10,6 +10,7 @@ class ADRProblem : public ADR::EllipticParamHandler<dim> {
 public:
     ADRProblem();
     void run(unsigned int refinement,std::string param_filename);
+    const LinearAlgebra::distributed::Vector<double>& get_solution();
 
 private:
     void setup_system(std::string param_filename);
@@ -70,6 +71,11 @@ ADRProblem<dim>::ADRProblem() :
 {
 }
 
+
+template <int dim>
+const LinearAlgebra::distributed::Vector<double>& ADRProblem<dim>::get_solution() {
+    return solution;
+}
 
 template <int dim>
 void ADRProblem<dim>::print_memory_usage() const {
