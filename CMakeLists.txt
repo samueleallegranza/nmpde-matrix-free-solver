@@ -17,3 +17,11 @@ add_executable(matrix_free_test
         include/general_definitions.hpp
 )
 deal_ii_setup_target(matrix_free_test)
+
+add_executable(matrix_based_test
+        tests/matrix_based_adr_class.cpp
+        include/adr_problem_mb.hpp
+        include/default_coefficient.hpp
+        include/general_definitions.hpp
+)
+deal_ii_setup_target(matrix_based_test)
