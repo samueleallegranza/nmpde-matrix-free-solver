@@ -17,7 +17,6 @@ add_executable(matrix_free_test
         tests/matrix_free_adr.cpp
         include/adr_problem.hpp
         include/adr_operator.hpp
-        include/default_coefficient.hpp
         include/general_definitions.hpp
 )
 deal_ii_setup_target(matrix_free_test)

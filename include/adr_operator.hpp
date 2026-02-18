@@ -2,7 +2,6 @@
 #define PROJECT7_MATRIXFREE_ADR_OPERATOR_HPP
 
 #include <general_definitions.hpp>
-#include <default_coefficient.hpp>
 
 template <int dim, int fe_degree, typename number>
 class ADROperator : public MatrixFreeOperators::Base<dim, LinearAlgebra::distributed::Vector<number>> {

@@ -2,7 +2,6 @@
 #define PROJECT7_MATRIXFREE_ADR_PROBLEM_HPP
 
 #include <general_definitions.hpp>
-#include <default_coefficient.hpp>
 #include <adr_operator.hpp>
 #include <prm_handler.hpp>
 
