@@ -7,5 +7,4 @@ int main(int argc, char *argv[]) {
 
     MatrixFreeADR::ADRProblem<3> adr_problem;
     adr_problem.run("../input/params/pb_3d_mf.prm");
-
 }
