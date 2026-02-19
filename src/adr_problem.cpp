@@ -276,7 +276,6 @@ namespace MatrixFreeADR {
                     for (unsigned int d=0; d<dim; ++d) p[d] = p_vect[d][v];
                     f_value[v] = this->force_term.value(p);
                 }
-                //phi.submit_value((f.value(phi.quadrature_point(q))  + neumann.value(phi.quadrature_point(q)) ) * phi.get_value(q), q);
                 // We submit the value of the force term at the quadrature point.
                 phi.submit_value(f_value, q);
             }
@@ -326,7 +325,6 @@ namespace MatrixFreeADR {
         mg_transfer.build(dof_handler);
         setup_time += time.wall_time();
 
-        //! TODO implement Chebyshev instead
         using SmootherType = JacobiSmoother<LevelMatrixType>;
         using VectorTypeMG = LinearAlgebra::distributed::Vector<float>;
         mg::SmootherRelaxation<SmootherType,VectorTypeMG> mg_smoother;
@@ -365,31 +363,33 @@ namespace MatrixFreeADR {
 
         PreconditionMG<dim,LinearAlgebra::distributed::Vector<float>,MGTransferMatrixFree<dim, float>> preconditioner(dof_handler, mg, mg_transfer);
 
-        //! TODO put as problem
         SolverControl solver_control(this->max_iters, this->epsilon * system_rhs.l2_norm());
 
-        typename SolverGMRES<LinearAlgebra::distributed::Vector<double>>::AdditionalData gmres_data;
-        //! TODO try both and see which is best (empirically) and relation to true error for both
-        gmres_data.right_preconditioning = true;
-
-        SolverGMRES<LinearAlgebra::distributed::Vector<double>> gmres(solver_control, gmres_data);
-
-        setup_time += time.wall_time();
-        // time_details << "MG build smoother time     (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << "s\n";
-        // pcout << "Total setup time               (wall) " << setup_time << "s\n";
-
-        time.reset();
+        setup_time += time.wall_time(); // finish tracking setup time
+        time.reset(); // tracking solve time
         time.start();
 
-        //! TODO check correctness of the following with BCs
-        constraints.distribute(solution);
+        // apply Dirichlet BCs to the initial guess
+        //constraints.distribute(solution);
 
+        // run the iterative solver that is appropriate
         try {
-            gmres.solve(system_matrix, solution, system_rhs, preconditioner);
+            if (this->symmetric_solver) {
+                // CG solver
+                SolverCG<LinearAlgebra::distributed::Vector<double>> cg(solver_control);
+                cg.solve(system_matrix, solution, system_rhs, preconditioner);
+            } else {
+                // GMRES solver
+                typename SolverGMRES<LinearAlgebra::distributed::Vector<double>>::AdditionalData gmres_data;
+                //! TODO try both and see which is best (empirically) and relation to true error for both
+                gmres_data.right_preconditioning = true;
+
+                SolverGMRES<LinearAlgebra::distributed::Vector<double>> gmres(solver_control, gmres_data);
+                gmres.solve(system_matrix, solution, system_rhs, preconditioner);
+            }
         } catch (std::exception &e) {
             pcout << "Solver failed: " << e.what() << std::endl;
         }
-
         constraints.distribute(solution);
 
         // pcout << "Time solve (" << solver_control.last_step() << " iterations)" << (solver_control.last_step() < 10 ? "  " : " ") << "(CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << "s\n";
@@ -447,5 +447,4 @@ namespace MatrixFreeADR {
             output_results(ref);
         }
     }
-
 }

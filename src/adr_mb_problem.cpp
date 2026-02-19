@@ -431,16 +431,26 @@ namespace MatrixBasedADR {
         time.start();
 
         SolverControl solver_control(this->max_iters, this->epsilon * system_rhs.l2_norm());
-
-        typename SolverGMRES<Vector<double>>::AdditionalData gmres_data;
-        //! TODO try both and see which is best (empirically) and relation to true error for both
-        gmres_data.right_preconditioning = true;
-
-        SolverGMRES<Vector<double>> solver(solver_control,gmres_data);
-
         solution = 0;
 
-        solver.solve(system_matrix, solution, system_rhs, preconditioner);
+        try {
+            if (this->symmetric_solver) {
+                // CG solver for dealii::Vector
+                SolverCG<Vector<double>> cg(solver_control);
+                cg.solve(system_matrix, solution, system_rhs, preconditioner);
+            } else {
+                // GMRES solver for dealii::Vector
+                typename SolverGMRES<Vector<double>>::AdditionalData gmres_data;
+                //! TODO try both and see which is best (empirically) and relation to true error for both
+                gmres_data.right_preconditioning = true;
+
+                SolverGMRES<Vector<double>> gmres(solver_control, gmres_data);
+                gmres.solve(system_matrix, solution, system_rhs, preconditioner);
+            }
+        } catch (std::exception &e) {
+            pcout << "Solver failed: " << e.what() << std::endl;
+        }
+
         constraints.distribute(solution);
 
         // pcout << "Time solve (" << solver_control.last_step() << " iterations)" << (solver_control.last_step() < 10 ? "  " : " ") << "(CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << "s\n";

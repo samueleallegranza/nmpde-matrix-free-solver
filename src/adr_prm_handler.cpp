@@ -33,12 +33,6 @@ namespace ADR {
                 Patterns::Selection("CG|GMRES"),
                 "The solver to use"
             );
-            prm.declare_entry(
-                "Preconditioner",
-                "Identity",
-                Patterns::Selection("Jacobi|Identity|ILU|ILUT|SSOR"),
-                "The type of preconditioner default is none"
-            );
         }
         prm.leave_subsection();
         prm.enter_subsection("Files");
@@ -154,7 +148,6 @@ namespace ADR {
             max_iters = prm.get_integer("Max iters");
             epsilon = prm.get_double("Tolerance");
             symmetric_solver = prm.get("Solver type") == "CG";
-            preconditioner = prm.get("Preconditioner");
         }
         prm.leave_subsection();
         prm.enter_subsection("Files");

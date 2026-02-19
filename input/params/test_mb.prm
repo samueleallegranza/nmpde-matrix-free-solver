@@ -12,10 +12,10 @@ end
 
 subsection Functions
   # Advection x coefficient
-  set Advection x    = 1.0
+  set Advection x    = 0.0
 
   # Advection y coefficient
-  set Advection y    = 1.0
+  set Advection y    = 0.0
 
   # Advection z coefficient
   set Advection z    = 0.0
@@ -30,7 +30,7 @@ subsection Functions
   set Dirichlet Tags = 0,1,2,3
 
   # Force term
-  set Force          = (1 + 5 * pi * pi) * cos(2*pi*x) * sin(pi*y) - (2*pi * sin(2*pi*x)*sin(pi*y)) + (pi*cos(2*pi*x)*cos(pi*y))
+  set Force          = (1 + 5 * pi * pi) * cos(2*pi*x) * sin(pi*y)
 
   # Neumann Boundary Condition
   set Neumann BC     =
@@ -47,11 +47,8 @@ subsection Solver
   # Max number of iters for linear solver
   set Max iters      = 500
 
-  # The type of preconditioner default is none
-  set Preconditioner = Jacobi
-
   # The solver to use
-  set Solver type    = GMRES
+  set Solver type    = CG
 
   # Tolerance for the linear solver
   set Tolerance      = 1.0e-16
