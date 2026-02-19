@@ -5,8 +5,14 @@ namespace ADR {
     using namespace dealii;
 
     template<int dim>
-    void EllipticParamHandler<dim>::declare_parameters() {
-        LOG_TITLE("Constructing Parameters Structure")
+    void ADRParamHandler<dim>::declare_parameters() {
+        prm.declare_entry(
+            "Refinements",
+            "5",
+            Patterns::List(Patterns::Integer(1,10),1),
+            "The refinement levels to test",
+            true
+        );
         prm.enter_subsection("Solver");
         {
             prm.declare_entry(
@@ -113,7 +119,7 @@ namespace ADR {
     }
 
     template<int dim>
-    void EllipticParamHandler<dim>::init(const String &filename) {
+    void ADRParamHandler<dim>::init(const String &filename) {
         if (initialized) return;
 
         if (!param_initialized) {
@@ -137,9 +143,14 @@ namespace ADR {
         LOG_VAR("File Name", filename)
         prm.parse_input(filename);
 
+        std::stringstream refinements_ss(prm.get("Refinements"));
+        String refinement;
+        while (std::getline(refinements_ss, refinement, ',')) {
+            refinements.push_back(stoi(refinement));
+        }
+
         prm.enter_subsection("Solver");
         {
-            LOG_TITLE("Getting Solver Parameters")
             max_iters = prm.get_integer("Max iters");
             epsilon = prm.get_double("Tolerance");
             symmetric_solver = prm.get("Solver type") == "CG";
@@ -148,13 +159,11 @@ namespace ADR {
         prm.leave_subsection();
         prm.enter_subsection("Files");
         {
-            LOG_TITLE("Getting File Names")
             output_filename = prm.get("Output file");
         }
         prm.leave_subsection();
         prm.enter_subsection("Functions");
         {
-            LOG_TITLE("Getting Functions")
             diffusion_s = prm.get("Diffusion");
             for (int d = 0; d < dim; d++) {
                 String advection_tag;
@@ -196,7 +205,6 @@ namespace ADR {
                 neumann_bc[i]->initialize(variables,neumann_bc_s[i],constants);
             }
 
-            LOG_TITLE("Initializing Functions from strings")
 
             diffusion_c.initialize(variables,diffusion_s,constants);
             advection_c.initialize(variables,advection_s,constants);
@@ -222,30 +230,40 @@ namespace ADR {
             LOG_VAR(advection_tag, advection_s[d]);
         }
         LOG_VAR("Reaction Coefficient",reaction_s)
-        LOG_VAR("Force term", force_term_s)
+        LOG_VAR("Force term", (force_term_s.length() <= 66 ? force_term_s : force_term_s.substr(0,63) + "..."))
         for (long unsigned int i = 0; i < dirichlet_bc_tags.size(); i++) {
-            String out = "Dirichlet Boundary " + std::to_string(dirichlet_bc_tags[i]) + ",  Function: " + dirichlet_bc_s[i];
-            LOG(out);
+            String out = fmt::format(
+                "{}Dirichlet Boundary : {}{}{},  Function: {}{}          " ,
+                GREEN,
+                YELLOW,dirichlet_bc_tags[i],GREEN,
+                YELLOW,dirichlet_bc_s[i]
+            );
+            LOG_FIT(out,100);
         }
         for (long unsigned int i = 0; i < neumann_bc_tags.size(); i++) {
-            String out = "Neumann Boundary " + std::to_string(neumann_bc_tags[i]) + ",  Function: " + neumann_bc_s[i];
-            LOG(out);
+            String out = fmt::format(
+                "{}Neumann Boundary : {}{}{},  Function: {}{}          " ,
+                GREEN,
+                YELLOW,neumann_bc_tags[i],GREEN,
+                YELLOW,neumann_bc_s[i]
+            );
+            LOG_FIT(out,100);
         }
         initialized = true;
     }
 
     template<int dim>
-    void EllipticParamHandler<dim>::print_parameters(const String &filename) {
+    void ADRParamHandler<dim>::print_parameters(const String &filename) {
         print_parameters_as(filename,ParameterHandler::DefaultStyle);
     }
 
     template<int dim>
-    void EllipticParamHandler<dim>::print_editable_parameters(const String &filename) {
+    void ADRParamHandler<dim>::print_editable_parameters(const String &filename) {
         print_parameters_as(filename,ParameterHandler::XML);
     }
 
     template<int dim>
-    void EllipticParamHandler<dim>::print_parameters_as(
+    void ADRParamHandler<dim>::print_parameters_as(
         const String &filename,
         ParameterHandler::OutputStyle style
     ) {

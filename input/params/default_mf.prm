@@ -1,17 +1,21 @@
 # Listing of Parameters
 # ---------------------
+# The refinement levels to test
+set Refinements = 4,5,6,7
+
+
 subsection Files
   # A .vtk file to save the solution to
-  set Output file = solution_mf
+  set Output file = ./output.vtk
 end
 
 
 subsection Functions
   # Advection x coefficient
-  set Advection x    = 1.0
+  set Advection x    = 0.0
 
   # Advection y coefficient
-  set Advection y    = 1.0
+  set Advection y    = 0.0
 
   # Advection z coefficient
   set Advection z    = 0.0
@@ -20,37 +24,37 @@ subsection Functions
   set Diffusion      = 1.0
 
   # Dirichlet Boundary Condition
-  set Dirichlet BC   = sin(pi*y), sin(pi*y), 0.0, 0.0
+  set Dirichlet BC   = 0.0
 
   # The Tag of the boundaries on which to apply the Dirichlet condition
-  set Dirichlet Tags = 0,1,2,3
+  set Dirichlet Tags = 0,1
 
   # Force term
-  set Force          = (1 + 5 * pi * pi) * cos(2*pi*x) * sin(pi*y) - (2*pi * sin(2*pi*x)*sin(pi*y)) + (pi*cos(2*pi*x)*cos(pi*y))
+  set Force          = 0.0
 
   # Neumann Boundary Condition
-  set Neumann BC     =
+  set Neumann BC     = 0.0
 
   # The Tag of the boundaries on which to apply the Neumann condition
-  set Neumann Tags   =
+  set Neumann Tags   = 0,1
 
   # Reaction coefficient
-  set Reaction       = 1.0
+  set Reaction       = 0.0
 end
 
 
 subsection Solver
   # Max number of iters for linear solver
-  set Max iters      = 500
+  set Max iters      = 1000
 
   # The type of preconditioner default is none
-  set Preconditioner = Jacobi
+  set Preconditioner = Identity
 
   # The solver to use
-  set Solver type    = GMRES
+  set Solver type    = CG
 
   # Tolerance for the linear solver
-  set Tolerance      = 1.0e-16
+  set Tolerance      = 1e-10
 end
 
 

@@ -7,14 +7,14 @@ namespace ADR {
     using namespace dealii;
 
     template <int dim>
-    class EllipticParamHandler {
+    class ADRParamHandler {
 
     public:
         using String = std::string;
         using ConstantMap = std::map<String, double>;
         using BoundaryIds  = types::boundary_id;
 
-        EllipticParamHandler() :
+        ADRParamHandler() :
         diffusion_c(1),
         advection_c(dim),
         reaction_c(1),
@@ -24,7 +24,7 @@ namespace ADR {
         pcout(std::cout, mpi_rank == 0) {
 
         }
-        ~EllipticParamHandler() = default;
+        ~ADRParamHandler() = default;
 
         void declare_parameters();
         void init(const String &filename);
@@ -40,6 +40,7 @@ namespace ADR {
         unsigned int max_iters;
         String preconditioner;
         std::vector<BoundaryIds> dirichlet_bc_tags, neumann_bc_tags;
+        std::vector<int> refinements;
         std::vector<std::unique_ptr<FunctionParser<dim>>> dirichlet_bc, neumann_bc;
         double epsilon;
         bool symmetric_solver;
@@ -58,8 +59,8 @@ namespace ADR {
 
     };
 }
-template class ADR::EllipticParamHandler<1>;
-template class ADR::EllipticParamHandler<2>;
-template class ADR::EllipticParamHandler<3>;
+template class ADR::ADRParamHandler<1>;
+template class ADR::ADRParamHandler<2>;
+template class ADR::ADRParamHandler<3>;
 
 #endif //NNPDE_STUDY_PDEPARAMSHANDLER_HPP
