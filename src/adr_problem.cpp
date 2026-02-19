@@ -59,13 +59,13 @@ namespace MatrixFreeADR {
         // Convert to MB for readability
         const double to_MB = 1.0 / (1024.0 * 1024.0);
 
-        LOG(fmt::format("{}Triangulation:        {}{:.8f} MB",GREEN,YELLOW,(mem_tria * to_MB)));
-        LOG(fmt::format("{}DoFHandler:           {}{:.8f} MB",GREEN,YELLOW,(mem_dofs * to_MB)));
-        LOG(fmt::format("{}Matrix-free operator: {}{:.8f} MB",GREEN,YELLOW,(mem_mf_sys * to_MB)));
-        LOG(fmt::format("{}Multigrid matrices:   {}{:.8f} MB",GREEN,YELLOW,(mem_mf_mg * to_MB)));
-        LOG(fmt::format("{}Vectors (Sol+RHS):    {}{:.8f} MB",GREEN,YELLOW,(mem_vec * to_MB)));
+        LOG(fmt::format("{}Triangulation:        {}{:2.9f} MB",GREEN,YELLOW,(mem_tria * to_MB)));
+        LOG(fmt::format("{}DoFHandler:           {}{:2.9f} MB",GREEN,YELLOW,(mem_dofs * to_MB)));
+        LOG(fmt::format("{}Matrix-free operator: {}{:2.9f} MB",GREEN,YELLOW,(mem_mf_sys * to_MB)));
+        LOG(fmt::format("{}Multigrid matrices:   {}{:2.9f} MB",GREEN,YELLOW,(mem_mf_mg * to_MB)));
+        LOG(fmt::format("{}Vectors (Sol+RHS):    {}{:2.9f} MB",GREEN,YELLOW,(mem_vec * to_MB)));
         std::size_t  total = mem_tria + mem_dofs + mem_mf_sys + mem_mf_mg + mem_vec;
-        LOG_FIT(fmt::format("{}{}TOTAL:                {}{:.8f} MB",BOLD,RED,YELLOW,(total * to_MB)),94);
+        LOG_FIT(fmt::format("{}{}TOTAL:                {}{:2.9f} MB",BOLD,RED,YELLOW,(total * to_MB)),94);
     }
 
     template<int dim>
@@ -102,7 +102,7 @@ namespace MatrixFreeADR {
 
         std::size_t  total = mem_tria + mem_dofs + mem_mf_sys + mem_mf_mg + mem_vec;
 
-        outfile << refinement << ","
+        outfile << refinement << "," << std::setprecision(10)
                 << (mem_tria * to_MB) << ","
                 << (mem_dofs * to_MB) << ","
                 << (mem_mf_sys * to_MB) << ","

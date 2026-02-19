@@ -53,13 +53,13 @@ namespace MatrixBasedADR {
         // Convert to MB for readability
         const double to_MB = 1.0 / (1024.0 * 1024.0);
 
-        LOG(fmt::format("{}Triangulation:        {}{:.9f} MB",GREEN,YELLOW,(mem_tria * to_MB)));
-        LOG(fmt::format("{}DoFHandler:           {}{:.9f} MB",GREEN,YELLOW,(mem_dofs * to_MB)));
-        LOG(fmt::format("{}Matrix:               {}{:.9f} MB",GREEN,YELLOW,(mem_mb_sys * to_MB)));
-        LOG(fmt::format("{}Multigrid matrices:   {}{:.9f} MB",GREEN,YELLOW,(mem_mb_mg * to_MB)));
-        LOG(fmt::format("{}Vectors (Sol+RHS):    {}{:.9f} MB",GREEN,YELLOW,(mem_vec * to_MB)));
+        LOG(fmt::format("{}Triangulation:        {}{:2.9f} MB",GREEN,YELLOW,(mem_tria * to_MB)));
+        LOG(fmt::format("{}DoFHandler:           {}{:2.9f} MB",GREEN,YELLOW,(mem_dofs * to_MB)));
+        LOG(fmt::format("{}Matrix:               {}{:2.9f} MB",GREEN,YELLOW,(mem_mb_sys * to_MB)));
+        LOG(fmt::format("{}Multigrid matrices:   {}{:2.9f} MB",GREEN,YELLOW,(mem_mb_mg * to_MB)));
+        LOG(fmt::format("{}Vectors (Sol+RHS):    {}{:2.9f} MB",GREEN,YELLOW,(mem_vec * to_MB)));
         std::size_t  total = mem_tria + mem_dofs + mem_mb_sys + mem_mb_mg + mem_vec;
-        LOG_FIT(fmt::format("{}{}TOTAL:                {}{:.9f} MB",BOLD,RED,YELLOW,(total * to_MB)),94);
+        LOG_FIT(fmt::format("{}{}TOTAL:                {}{:2.9f} MB",BOLD,RED,YELLOW,(total * to_MB)),94);
     }
 
     template<int dim>
@@ -97,7 +97,7 @@ namespace MatrixBasedADR {
 
         std::size_t  total = mem_tria + mem_dofs + mem_mb_sys + mem_mb_mg + mem_vec;
 
-        outfile << refinement << ","
+        outfile << refinement << "," << std::setprecision(10)
                 << (mem_tria * to_MB) << ","
                 << (mem_dofs * to_MB) << ","
                 << (mem_mb_sys * to_MB) << ","
