@@ -18,4 +18,4 @@ csv/
 .vscode/
 .idea/
 
-docs/
+docs/doxygen/*
