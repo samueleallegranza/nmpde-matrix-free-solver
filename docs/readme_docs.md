@@ -16,18 +16,19 @@ A finite element solver for the advection-diffusion-reaction (ADR) equation in 2
 ## Mathematical Formulation
 
 ### Strong form
-$$\begin{cases} -\nabla \cdot (\mu \, \nabla u) + \mathbf{\beta} \cdot \nabla u + \gamma \, u = f & \text{in } \Omega \subset \mathbb{R}^d, \quad d \in \{1,2,3\} \\[4pt] u = g & \text{on } \Gamma_D \subset \partial\Omega \\[4pt] \nabla u \cdot \vec{n} = h & \text{on } \Gamma_N = \partial\Omega \setminus \Gamma_D \end{cases}$$
-where $\mu$ is the diffusion coefficient, $\mathbf{\beta}$ is the advection coefficient, $\gamma$ is the reaction coefficient, and $f$ is the forcing term.
+
+\f[\begin{cases} -\nabla \cdot (\mu \, \nabla u) + \mathbf{\beta} \cdot \nabla u + \gamma \, u = f & \text{in } \Omega \subset \mathbb{R}^d, \quad d \in \{1,2,3\} \\[4pt] u = g & \text{on } \Gamma_D \subset \partial\Omega \\[4pt] \nabla u \cdot \vec{n} = h & \text{on } \Gamma_N = \partial\Omega \setminus \Gamma_D \end{cases}\f]
+where \f$\mu\f$ is the diffusion coefficient, \f$\mathbf{\beta}\f$ is the advection coefficient, \f$\gamma\f$ is the reaction coefficient, and \f$f\f$ is the forcing term.
 
 ### Weak form
 
-Find $u \in V$: $\quad a(u, v) = f(v) + a(R_g, v) \quad \forall \, v \in V$
+Find \f$u \in V\f$: \f$\quad a(u, v) = f(v) + a(R_g, v) \quad \forall \, v \in V\f$
 
 where:
 
-$$a(u, v) = \underbrace{\int_\Omega \mu \, \nabla u \cdot \nabla v}_{\text{diffusion}} + \underbrace{\int_\Omega (\mathbf{\beta} \cdot \nabla u) \, v}_{\text{advection}} + \underbrace{\int_\Omega \gamma \, u \, v}_{\text{reaction}}$$
+\f[a(u, v) = \underbrace{\int_\Omega \mu \, \nabla u \cdot \nabla v}_{\text{diffusion}} + \underbrace{\int_\Omega (\mathbf{\beta} \cdot \nabla u) \, v}_{\text{advection}} + \underbrace{\int_\Omega \gamma \, u \, v}_{\text{reaction}}\f]
 
-$$f(v) = \int_\Omega f \, v + \int_{\Gamma_N} h \, v$$
+\[f(v) = \int_\Omega f \, v + \int_{\Gamma_N} h \, v\f]
 
 ## Prerequisites
 
@@ -106,10 +107,10 @@ Problems are configured via `.prm` files using deal.II's `ParameterHandler` form
 | Parameter | Description                                           |
 |-----------|-------------------------------------------------------|
 | `Refinements` | Global refinement levels (comma-separated)            |
-| `Diffusion` | Diffusion coefficient $\mu(\mathbf{x})$               |
-| `Advection x/y/z` | Components of advection field $\mathbf{\beta}$        |
-| `Reaction` | Reaction coefficient $\gamma(\mathbf{x})$             |
-| `Force` | Forcing term $f(\mathbf{x})$                          |
+| `Diffusion` | Diffusion coefficient \f$\mu(\mathbf{x})\f$           |
+| `Advection x/y/z` | Components of advection field \f$\mathbf{\beta}\f$    |
+| `Reaction` | Reaction coefficient \f$\gamma(\mathbf{x})\f$         |
+| `Force` | Forcing term \f$f(\mathbf{x})\f$                      |
 | `Dirichlet BC` | BC values per boundary ID                             |
 | `Dirichlet Tags` | Boundary IDs for Dirichlet conditions                 |
 | `Neumann BC` | Neumann flux values per boundary ID                   |
