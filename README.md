@@ -49,6 +49,7 @@ sudo apt install -y libopenmpi-dev openmpi-bin
 sudo apt install -y libboost-all-dev
 sudo apt install -y libdeal.ii-dev
 sudo apt install -y libfmt-dev
+sudo apt install -y doxygen graphviz
 ```
 
 ## Build & Run
@@ -72,6 +73,12 @@ cd results
 ```
 
 Parameter file paths are set in `tests/matrix_free_adr.cpp` and `tests/matrix_based_adr.cpp`.
+
+To generate documentation with doxygen, run:
+```bash
+cd build
+make docs
+```
 
 ## Project Structure
 
