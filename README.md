@@ -11,7 +11,7 @@ A finite element solver for the advection-diffusion-reaction (ADR) equation in 2
 - [Project Structure](#project-structure)
 - [Parameter Files](#parameter-files)
 - [Output](#output)
-- [Performance Results](#performance-results)
+- [Authors](#authors)
 
 ## Mathematical Formulation
 
