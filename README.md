@@ -18,20 +18,21 @@ A finite element solver for the advection-diffusion-reaction (ADR) equation in 2
 ### Strong form
 
 ```math
-\begin{cases} -\nabla \cdot (\mu, \nabla u) + \mathbf{\beta} \cdot \nabla u + \gamma u = f & \text{in } \Omega \subset \mathbb{R}^d, \quad d \in \{1,2,3\} \\ u = g & \text{on } \Gamma_D \subset \partial\Omega \\ \nabla u \cdot \vec{n} = h & \text{on } \Gamma_N = \partial\Omega \setminus \Gamma_D \end{cases}
+\begin{cases} -\nabla \cdot (\mu \nabla u) + \mathbf{\beta} \cdot \nabla u + \gamma u = f & \text{in } \Omega \subset \mathbb{R}^d \quad d \in \{1,2,3\} \\ u = g & \text{on } \Gamma_D \subset \partial\Omega \\ \nabla u \cdot \vec{n} = h & \text{on } \Gamma_N = \partial\Omega \setminus \Gamma_D \end{cases}
+\\
 ```
 
 where $\mu$ is the diffusion coefficient, $\mathbf{\beta}$ is the advection coefficient, $\gamma$ is the reaction coefficient, and $f$ is the forcing term.
 
 ### Weak form
 
-Find $u \in V$: $\quad a(u, v) = f(v) + a(R_g, v) \quad \forall \, v \in V$
+Find $u \in V$: $\quad a(u, v) = f(v) + a(R_g, v) \quad \forall v \in V$
 
 where:
 
-$$a(u, v) = \underbrace{\int_\Omega \mu \, \nabla u \cdot \nabla v}_{\text{diffusion}} + \underbrace{\int_\Omega (\mathbf{\beta} \cdot \nabla u) \, v}_{\text{advection}} + \underbrace{\int_\Omega \gamma \, u \, v}_{\text{reaction}}$$
+$$a(u, v) = \underbrace{\int_\Omega \mu \nabla u \cdot \nabla v}_{\text{diffusion}} + \underbrace{\int_\Omega (\mathbf{\beta} \cdot \nabla u) v}_{\text{advection}} + \underbrace{\int_\Omega \gamma u v}_{\text{reaction}}$$
 
-$$f(v) = \int_\Omega f \, v + \int_{\Gamma_N} h \, v$$
+$$f(v) = \int_\Omega f v + \int_{\Gamma_N} h v$$
 
 ## Prerequisites
 
