@@ -1,196 +1,137 @@
-# Project 7: Matrix-Free Solvers
+# Matrix-Free FEM Solver for the Advection-Diffusion-Reaction Equation
 
-Implementation of matrix-free solvers for the advection-diffusion-reaction equation using deal.II library.
+A finite element solver for the advection-diffusion-reaction (ADR) equation in 2D/3D using [deal.II](https://www.dealii.org/). Compares a **matrix-free** approach (sum factorization + SIMD vectorization + geometric multigrid) against a traditional **matrix-based** approach (sparse matrix assembly) in terms of performance and memory usage.
 
-## Problem Description
+## Table of Contents
 
-This project solves the advection-diffusion-reaction problem:
+- [Mathematical Formulation](#mathematical-formulation)
+- [Prerequisites](#prerequisites)
+- [Environment Setup](#environment-setup)
+- [Build & Run](#build--run)
+- [Project Structure](#project-structure)
+- [Parameter Files](#parameter-files)
+- [Output](#output)
+- [Authors](#authors)
 
-```
--∇·(μ∇u) + ∇·(βu) + γu = f    in Ω
-u = g                          on Γ_D ⊂ ∂Ω
-∇u·n = h                       on Γ_N = ∂Ω\Γ_D
-```
+## Mathematical Formulation
+
+### Strong form
+
+$$
+\begin{cases}
+-\nabla \cdot (\mu \, \nabla u) + \mathbf{\beta} \cdot \nabla u + \gamma \, u = f
+& \text{in } \Omega \subset \mathbb{R}^d, \quad d \in \{1,2,3\}, \\
+u = g
+& \text{on } \Gamma_D \subset \partial\Omega, \\
+\nabla u \cdot \vec{n} = h
+& \text{on } \Gamma_N = \partial\Omega \setminus \Gamma_D.
+\end{cases}
+$$
+where $\mu$ is the diffusion coefficient, $\mathbf{\beta}$ is the advection coefficient, $\gamma$ is the reaction coefficient, and $f$ is the forcing term.
+
+### Weak form
+
+Find $u \in V$: $\quad a(u, v) = f(v) + a(R_g, v) \quad \forall \, v \in V$
 
 where:
-- μ(x) is the diffusion coefficient
-- β(x) is the advection field
-- γ(x) is the reaction coefficient
-- f(x) is the source term
-- g(x) and h(x) are boundary values
 
-## Objectives
+$$a(u, v) = \underbrace{\int_\Omega \mu \, \nabla u \cdot \nabla v}_{\text{diffusion}} + \underbrace{\int_\Omega (\mathbf{\beta} \cdot \nabla u) \, v}_{\text{advection}} + \underbrace{\int_\Omega \gamma \, u \, v}_{\text{reaction}}$$
 
-1. Implement a **matrix-free solver** using deal.II's MatrixFree framework
-2. Implement a **matrix-based solver** for comparison
-3. Compare performance in terms of:
-   - Computational efficiency (wall time)
-   - Memory consumption
-   - Parallel scalability
-   - Implementation complexity
+$$f(v) = \int_\Omega f \, v + \int_{\Gamma_N} h \, v$$
+
+## Prerequisites
+
+| Dependency | Version |
+|------------|---------|
+| Ubuntu | 24.04 LTS |
+| deal.II | 9.5.1 |
+| MPI (OpenMPI) | any recent |
+| Boost | >= 1.72.0 |
+| fmt | any recent |
+
+## Environment Setup
+
+On ubuntu 24.04 you only need to install these libraries:
+```bash
+sudo apt update
+sudo apt install -y build-essential cmake gdb
+sudo apt install -y libopenmpi-dev openmpi-bin
+sudo apt install -y libboost-all-dev
+sudo apt install -y libdeal.ii-dev
+sudo apt install -y libfmt-dev
+sudo apt install -y doxygen graphviz
+```
+
+## Build & Run
+To build:
+```bash
+mkdir -p build && cd build
+cmake ..
+make -j$(nproc)
+```
+
+We can run all matrix free tests with MPI as follows:
+```
+cd results
+mpirun -np 4 ../bin/matrix_free_test
+```
+
+We can run all matrix based tests as follows:
+```
+cd results
+../bin/matrix_based_test
+```
+
+Parameter file paths are set in `tests/matrix_free_adr.cpp` and `tests/matrix_based_adr.cpp`.
+
+To generate documentation with doxygen, run:
+```bash
+cd build
+make docs
+```
 
 ## Project Structure
 
 ```
-├── CMakeLists.txt              # Main CMake configuration
-├── cmake-common.cmake          # Common CMake settings
-├── README.md                   # This file
-├── include/
-│   ├── advection_diffusion_problem.h # Problem class header
-│   ├── matrix_based_operator.h       # Matrix-based operator class
-│   └── matrix_free_operator.h        # Matrix-free operator class
-├── src/
-│   ├── main.cpp                      # Main driver
-│   └── advection_diffusion_problem.cpp # Problem class implementation
-├── tests/                      # Benchmarks and tests (see Testing section)
-│   ├── CMakeLists.txt
-│   ├── matrix_based_adr.cpp
-│   ├── matrix_based_adr_seq.cpp
-│   ├── matrix_free_adr.cpp
-│   └── matrix_free_poisson.cpp
-├── meshes/                     # Mesh files
-└── results/                    # Output directory
+nmpde-matrix-free-solver/
+├── bin/                        # Where the binaries are compiled
+├── build/                      # CMake build directory
+├── docs/                       # Contains doxygen documentation
+├── images/                     # A place to put paraview output files 
+├── include/                    # The core of the library
+├── src/                        # The implementaton of .hpp files 
+├── lib/                        # Static libraries are compiled here
+├── tests/                      # Set of test for the library
+├── input/                      # A set of input parameters for the tests
+├── csv/                        # Directory to store csv results of tests
+├── results/                    # Paraview files from test
+├── CMakeLists.txt
+└── cmake-common.cmake
 ```
 
-## Building the Project
+## Parameter Files
 
-```bash
-# Create build directory
-mkdir build
-cd build
+Problems are configured via `.prm` files using deal.II's `ParameterHandler` format. Coefficient expressions support standard math functions (`sin`, `cos`, `exp`, `pi`, etc.). See `input/` for examples.
 
-# Configure with CMake
-cmake ..
+| Parameter | Description                                           |
+|-----------|-------------------------------------------------------|
+| `Refinements` | Global refinement levels (comma-separated)            |
+| `Diffusion` | Diffusion coefficient $\mu(\mathbf{x})$               |
+| `Advection x/y/z` | Components of advection field $\mathbf{\beta}$        |
+| `Reaction` | Reaction coefficient $\gamma(\mathbf{x})$             |
+| `Force` | Forcing term $f(\mathbf{x})$                          |
+| `Dirichlet BC` | BC values per boundary ID                             |
+| `Dirichlet Tags` | Boundary IDs for Dirichlet conditions                 |
+| `Neumann BC` | Neumann flux values per boundary ID                   |
+| `Neumann Tags` | Boundary IDs for Neumann conditions                   |
+| `Solver type` | `CG` (symmetric) or `GMRES` (non-symmetric)           |
+| `Max iters` | Maximum solver iterations                             |
+| `Tolerance` | Solver convergence tolerance                          |
+| `Output file` | Name for the output files, extension will be appended |
 
-# Build
-make
+## Output
 
-# Run
-./matrix_free_solver
-```
+**Solution files:** Written to `results/` as `.vtu` and `.pvtu` files. Open with [ParaView](https://www.paraview.org/) for visualization. Output is automatically skipped when the mesh exceeds 1M elements.
 
-## Development tests
-
-The `tests/` directory contains several benchmark and validation tests. These are built automatically when you compile the project.
-
-### Available Tests
-
-- **`matrix_free_poisson`**: Matrix-free Poisson solver. A simpler validation case ensuring the matrix-free infrastructure works correctly for the Poisson equation.
-- **`matrix_based_adr`**: Matrix-Based Advection-Diffusion-Reaction Benchmark (MPI Parallel). Useful for comparing performance against the matrix-free implementation in a distributed setting.
-- **`matrix_based_adr_seq`**: Matrix-Based Advection-Diffusion-Reaction Benchmark (Serial). Useful to quickly compute the solution of a cefined problem.
-- **`matrix_free_adr`**: Matrix-free Advection-Diffusion-Reaction Solver. This is the primary test for the matrix-free implementation, including memory benchmarking.
-
-### Running Tests
-
-The test executables are located in the `build/tests/` directory after building.
-
-```bash
-cd build/tests
-
-# Run matrix-free ADR solver
-mpirun -np 8 ./matrix_free_adr
-
-# Run matrix-based parallel ADR solver
-mpirun -np 8 ./matrix_based_adr
-
-# Run matrix-based serial ADR solver
-./matrix_based_adr_serial
-```
-
-## Implementation Guide
-
-### TODO List
-
-#### 1. Coefficient Functions (src/advection_diffusion_problem.cc)
-- [ ] Implement `DiffusionCoefficient::value()` - define μ(x)
-- [ ] Implement `AdvectionCoefficient::value()` - define β(x)
-- [ ] Implement `ReactionCoefficient::value()` - define γ(x)
-- [ ] Implement `RightHandSide::value()` - define f(x)
-- [ ] Implement boundary value functions g(x) and h(x)
-
-#### 2. Mesh Generation (make_grid)
-- [ ] Create initial mesh using GridGenerator
-- [ ] Set appropriate boundary IDs for Dirichlet/Neumann conditions
-- [ ] Refine mesh globally or adaptively
-
-#### 3. System Setup (setup_system)
-- [ ] Distribute DoFs
-- [ ] Setup hanging node constraints
-- [ ] Apply Dirichlet boundary constraints
-- [ ] Initialize MatrixFree data structure
-- [ ] Initialize matrix-free operator with coefficients
-- [ ] Compute diagonal for preconditioning
-- [ ] Setup sparsity pattern for matrix-based approach
-- [ ] Assemble system matrix
-
-#### 4. Matrix-Free Operator (include/matrix_free_operator.h)
-- [ ] Store coefficient functions in vectorized format
-- [ ] Implement `local_apply()` cell loop
-  - [ ] Evaluate solution values and gradients
-  - [ ] Apply weak form: ∫[μ∇u·∇v + β·∇u v + γuv] dx
-  - [ ] Submit values and gradients
-- [ ] Implement `vmult()` using cell_loop
-- [ ] Implement diagonal computation for Jacobi preconditioner
-
-#### 5. Matrix-Based Operator (include/matrix_based_operator.h)
-- [ ] Create dynamic sparsity pattern
-- [ ] Implement standard assembly loop
-  - [ ] Loop over cells and quadrature points
-  - [ ] Evaluate coefficients at quadrature points
-  - [ ] Assemble local matrix contributions
-  - [ ] Distribute to global matrix
-
-#### 6. RHS Assembly (assemble_rhs)
-- [ ] Implement standard RHS assembly with FEValues
-- [ ] Add Neumann boundary contributions (face integrals)
-- [ ] Apply constraints
-
-#### 7. Solvers
-- [ ] **Matrix-free solver**:
-  - [ ] Setup Jacobi preconditioner using diagonal
-  - [ ] Configure CG solver
-  - [ ] Track iteration count and solve time
-- [ ] **Matrix-based solver**:
-  - [ ] Setup SSOR or ILU preconditioner
-  - [ ] Configure CG solver
-  - [ ] Track iteration count and solve time
-
-#### 8. Performance Analysis (print_performance_metrics)
-- [ ] Collect timing data for both methods
-- [ ] Compute memory usage estimates
-- [ ] Calculate speedup factors
-- [ ] Generate comparison tables
-- [ ] Plot scaling curves (optional)
-
-#### 9. Verification
-- [ ] Implement manufactured solution
-- [ ] Compute L2 and H1 errors
-- [ ] Verify convergence rates
-- [ ] Compare matrix-free vs matrix-based solutions
-
-#### 10. Output (output_results)
-- [ ] Write solution to VTU files
-- [ ] Visualize with ParaView
-- [ ] Save performance data to files
-
-## Expected Results
-
-### Performance Characteristics
-
-**Matrix-Free Advantages:**
-- Lower memory consumption: O(N) vs O(N log N) for sparse matrix
-- Better cache efficiency and vectorization
-- 5-10× speedup for high-order elements (p ≥ 3)
-- Excellent parallel scalability
-
-**Matrix-Based Advantages:**
-- Simpler implementation
-- More flexible preconditioners available
-- Competitive for low-order elements (p = 1, 2)
-
-
-## References
-
-- deal.II Step-37: [Matrix-free methods](https://www.dealii.org/current/doxygen/deal.II/step_37.html)
-- deal.II Documentation: [MatrixFree class](https://www.dealii.org/current/doxygen/deal.II/classMatrixFree.html)
-- Kronbichler & Kormann (2012): "Fast matrix-free evaluation of discontinuous Galerkin finite element operators"
+## Authors
+Samuele Allegranza, Vale Turco, Bianca Michielan, Valeriia Potrebiina
