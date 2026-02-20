@@ -1,0 +1,16 @@
+# Build
+build/
+bin/
+lib/
+
+# deal.II / ParaView output
+*.vtu
+*.pvtu
+*.vtk
+*.pvtk
+*.pvd
+
+csv/
+
+.vscode/
+.idea/
