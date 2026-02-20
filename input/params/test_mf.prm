@@ -1,7 +1,7 @@
 # Listing of Parameters
 # ---------------------
 # The refinement levels to test
-set Refinements = 4,5,6,7
+set Refinements = 4,6,8,10
 
 
 subsection Files

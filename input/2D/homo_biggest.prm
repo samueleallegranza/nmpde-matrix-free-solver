@@ -1,36 +1,36 @@
 # Listing of Parameters
 # ---------------------
 # The refinement levels to test
-set Refinements = 4,6,8,10
+set Refinements = 5,6,7,8
 
 
 subsection Files
   # A .vtk file to save the solution to
-  set Output file = solution_mb
+  set Output file = homo_biggest
 end
 
 
 subsection Functions
   # Advection x coefficient
-  set Advection x    = 0.0
+  set Advection x    = 20
 
   # Advection y coefficient
-  set Advection y    = 0.0
+  set Advection y    = 60
 
   # Advection z coefficient
   set Advection z    = 0.0
 
   # Diffusion coefficient
-  set Diffusion      = 1.0
+  set Diffusion      = 2.0
 
   # Dirichlet Boundary Condition
-  set Dirichlet BC   = sin(pi*y), sin(pi*y), 0.0, 0.0
+  set Dirichlet BC   = 0.0,0.0,0.0,0.0
 
   # The Tag of the boundaries on which to apply the Dirichlet condition
   set Dirichlet Tags = 0,1,2,3
 
   # Force term
-  set Force          = (1 + 5 * pi * pi) * cos(2*pi*x) * sin(pi*y)
+  set Force          = (16*pi*pi+3)*sin(2*pi*x)*sin(2*pi*y)+40*pi*cos(2*pi*x)*sin(2*pi*y)+120*pi*sin(2*pi*x)*cos(2*pi*y)
 
   # Neumann Boundary Condition
   set Neumann BC     =
@@ -39,19 +39,19 @@ subsection Functions
   set Neumann Tags   =
 
   # Reaction coefficient
-  set Reaction       = 1.0
+  set Reaction       = 3.0
 end
 
 
 subsection Solver
   # Max number of iters for linear solver
-  set Max iters      = 500
+  set Max iters      = 100000
 
   # The solver to use
-  set Solver type    = CG
+  set Solver type    = GMRES
 
   # Tolerance for the linear solver
-  set Tolerance      = 1.0e-16
+  set Tolerance      = 1.0e-6
 end
 
 
