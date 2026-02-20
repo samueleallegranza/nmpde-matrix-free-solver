@@ -77,3 +77,19 @@ add_executable(matrix_based_test
 )
 deal_ii_setup_target(matrix_based_test)
 target_link_libraries(matrix_based_test prm_handler matrix_based_adr_lib fmt::fmt)
+
+#┌─────────────────────────────────────────────────┐
+#│                                                 │
+#│ ▄▄▄▄                                            │
+#│ █   ▀▄  ▄▄▄   ▄   ▄  ▄   ▄   ▄▄▄▄   ▄▄▄   ▄ ▄▄  │
+#│ █    █ █▀ ▀█   █▄█   ▀▄ ▄▀  █▀ ▀█  █▀  █  █▀  █ │
+#│ █    █ █   █   ▄█▄    █▄█   █   █  █▀▀▀▀  █   █ │
+#│ █▄▄▄▀  ▀█▄█▀  ▄▀ ▀▄   ▀█    ▀█▄▀█  ▀█▄▄▀  █   █ │
+#│                       ▄▀     ▄  █               │
+#│                      ▀▀       ▀▀                │
+#└─────────────────────────────────────────────────┘
+find_package(Doxygen)
+if(Doxygen_FOUND)
+    message(STATUS "Doxygen found")
+    doxygen_add_docs(docs ${dir} WORKING_DIRECTORY ${dir} CONFIG_FILE "${dir}/docs/Doxyfile")
+endif()

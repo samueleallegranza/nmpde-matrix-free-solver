@@ -69,16 +69,22 @@ const unsigned int degree_finite_element = 2;
 
 /// @def The escape sequence to print in green on the shell
 #define GREEN   "\033[32m"
+
 /// @def The escape sequence to print in yellow on the shell
 #define YELLOW  "\033[33m"
+
 /// @def The escape sequence to print in blue on the shell
 #define BLUE  "\033[34m"
+
 /// @def The escape sequence to print in cyan on the shell
 #define CYAN    "\033[36m"
+
 /// @def The escape sequence to print in red on the shell
 #define RED    "\033[31m"
+
 /// @def The escape sequence to reset foreground colors on the shell
 #define RESET   "\033[0m"
+
 /// @def The escape sequence to print in bold on the shell
 #define BOLD    "\033[1m"
 

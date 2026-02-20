@@ -1,0 +1,75 @@
+DOXYFILE_ENCODING      = UTF-8
+PROJECT_NAME           = "Matrix-Free ADR Solver"
+PROJECT_BRIEF          = "Implementation of a Matrix-Free solver library for ADR problems"
+OUTPUT_DIRECTORY       = "./docs/Doxygen/"
+CREATE_SUBDIRS         = NO
+ALLOW_UNICODE_NAMES    = YES
+OUTPUT_LANGUAGE        = English
+BRIEF_MEMBER_DESC      = YES
+REPEAT_BRIEF           = YES
+ABBREVIATE_BRIEF       = "The $name class" \
+                         "The $name widget" \
+                         "The $name file" \
+                         is \
+                         provides \
+                         specifies \
+                         contains \
+                         represents \
+                         a \
+                         an \
+                         the
+FULL_PATH_NAMES        = YES
+TAB_SIZE               = 4
+MARKDOWN_SUPPORT       = YES
+MARKDOWN_STRICT        = YES
+TOC_INCLUDE_HEADINGS   = 6
+MARKDOWN_ID_STYLE      = DOXYGEN
+AUTOLINK_SUPPORT       = YES
+BUILTIN_STL_SUPPORT    = YES
+NUM_PROC_THREADS       = 8
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE          = YES
+SHOW_HEADERFILE        = NO
+SHOW_INCLUDE_FILES     = NO
+GENERATE_TODOLIST      = NO
+MAX_INITIALIZER_LINES  = 0
+SHOW_USED_FILES        = NO
+SHOW_FILES             = YES
+SHOW_NAMESPACES        = YES
+QUIET                  = YES
+INPUT_ENCODING         = UTF-8
+FILE_PATTERNS          =
+RECURSIVE              = YES
+EXCLUDE_SYMLINKS       = YES
+USE_MDFILE_AS_MAINPAGE = docs/readme_docs.md
+IMPLICIT_DIR_DOCS      = NO
+ALPHABETICAL_INDEX     = NO
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+HTML_FILE_EXTENSION    = .html
+HTML_HEADER            =
+HTML_FOOTER            =
+HTML_STYLESHEET        =
+HTML_EXTRA_STYLESHEET  =
+HTML_EXTRA_FILES       =
+HTML_COLORSTYLE        = AUTO_LIGHT
+HTML_DYNAMIC_MENUS     = NO
+HTML_DYNAMIC_SECTIONS  = NO
+HTML_CODE_FOLDING      = YES
+HTML_COPY_CLIPBOARD    = YES
+GENERATE_TREEVIEW      = YES
+PAGE_OUTLINE_PANEL     = YES
+FULL_SIDEBAR           = NO
+HTML_FORMULA_FORMAT    = png
+FORMULA_FONTSIZE       = 10
+USE_MATHJAX            = YES
+MATHJAX_VERSION        = MathJax_2
+MATHJAX_FORMAT         = HTML-CSS
+GENERATE_LATEX         = YES
+LATEX_OUTPUT           = latex
+PAPER_TYPE             = a4
+ENABLE_PREPROCESSING   = YES
+PREDEFINED             = BUILD_TYPE_DEBUG
+SKIP_FUNCTION_MACROS   = NO
+CLASS_GRAPH            = YES
+EXCLUDE = build/ README.md
