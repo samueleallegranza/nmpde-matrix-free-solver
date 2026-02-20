@@ -17,16 +17,10 @@ A finite element solver for the advection-diffusion-reaction (ADR) equation in 2
 
 ### Strong form
 
-$$
-\begin{cases}
--\nabla \cdot (\mu \, \nabla u) + \mathbf{\beta} \cdot \nabla u + \gamma \, u = f
-& \text{in } \Omega \subset \mathbb{R}^d, \quad d \in \{1,2,3\}, \\
-u = g
-& \text{on } \Gamma_D \subset \partial\Omega, \\
-\nabla u \cdot \vec{n} = h
-& \text{on } \Gamma_N = \partial\Omega \setminus \Gamma_D.
-\end{cases}
-$$
+```math
+\begin{cases} -\nabla \cdot (\mu, \nabla u) + \mathbf{\beta} \cdot \nabla u + \gamma u = f & \text{in } \Omega \subset \mathbb{R}^d, \quad d \in \{1,2,3\} \\ u = g & \text{on } \Gamma_D \subset \partial\Omega \\ \nabla u \cdot \vec{n} = h & \text{on } \Gamma_N = \partial\Omega \setminus \Gamma_D \end{cases}
+```
+
 where $\mu$ is the diffusion coefficient, $\mathbf{\beta}$ is the advection coefficient, $\gamma$ is the reaction coefficient, and $f$ is the forcing term.
 
 ### Weak form
