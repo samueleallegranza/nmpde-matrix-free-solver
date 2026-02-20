@@ -10,7 +10,12 @@ lib/
 *.pvtk
 *.pvd
 
+results/
+images/
+
 csv/
 
 .vscode/
 .idea/
+
+docs/

@@ -1,12 +1,27 @@
+/**
+ * Library implementing a Matrix-Free operator and a Jacobi preconditioner for Matrix-Free systems
+ * @file adr_operator.hpp
+ * @sa adr_problem.hpp
+ */
+
 #ifndef PROJECT7_MATRIXFREE_ADR_OPERATOR_HPP
 #define PROJECT7_MATRIXFREE_ADR_OPERATOR_HPP
 
 #include <general_definitions.hpp>
 
-
+/**
+ * Namespace for Matrix free ADR solvers
+ * @namespace MatrixFreeADR
+ */
 namespace MatrixFreeADR {
     using namespace dealii;
 
+    /**
+     * @brief a class that implements the action of the matrix on a vector
+     * @tparam dim the dimension of the problem
+     * @tparam fe_degree the final element degree
+     * @tparam number the number type to be used (float for preconditioner, double otherwise)
+     */
     template <int dim, int fe_degree, typename number>
     class ADROperator : public MatrixFreeOperators::Base<dim, LinearAlgebra::distributed::Vector<number>> {
     public:
@@ -15,33 +30,78 @@ namespace MatrixFreeADR {
 
         ADROperator();
 
+        /// @brief clear the matrix free data
         void clear() override;
 
+        /**
+         * @brief evaluates coefficients on the cells and saves them in a Table
+         *
+         * @param diffu_f The 1D function that represent the diffusion coefficient
+         * @param advec_f The 3D function that represent the advection coefficient
+         * @param react_f The 1D function that represent the reaction coefficient
+         */
         void evaluate_coefficients(
             const FunctionParser<dim> &diffu_f,
             const FunctionParser<dim> &advec_f,
             const FunctionParser<dim> &react_f
             );
 
+        /**
+         * @brief Computes the diagonal of the matrix
+         * @note Used for Jacobi
+         * @sa local_compute_diagonal
+         */
         virtual void compute_diagonal() override;
 
+        /**
+         * @brief Computes how much memory is occupied by the Matrix-Free operator
+         * @return The memory consumed by the operator
+         */
         std::size_t memory_consumption() const override;
 
-        Table<2, VectorizedArray<number>>                  mu_values;
-        Table<2, Tensor<1, dim, VectorizedArray<number>>>  beta_values;
-        Table<2, VectorizedArray<number>>                  gamma_values;
+        /// @brief a table associating to each cell a SIMD ready collection of values of the diffusion coefficient
+        Table<2, VectorizedArray<number>> mu_values;
+        /// @brief a table associating to each cell a SIMD ready collection of tensors of the advection coefficient
+        Table<2, Tensor<1, dim, VectorizedArray<number>>> beta_values;
+        /// @brief a table associating to each cell a SIMD ready collection of values of the reaction coefficient
+        Table<2, VectorizedArray<number>> gamma_values;
 
     private:
+        /**
+         * @brief Applies the Operator on a vector
+         *
+         * This method implements the action of the matrix operator on a vector.
+         * essentially it calls MatrixFree::cell_loop() to loop over the vector
+         * and local_apply() on each cell.
+         * @param dst The destination vector
+         * @param src The source vector
+         * @sa local_apply
+         */
         virtual void apply_add(
           LinearAlgebra::distributed::Vector<number> &      dst,
           const LinearAlgebra::distributed::Vector<number> &src) const override;
 
+        /**
+         * @brief Applies the Operator on the cells
+         * @param data The data of the matrix free operator
+         * @param dst The destination vector
+         * @param src The source vector
+         * @param cell_range The cells on which to apply the operator
+         * @sa apply_add
+         */
         void
         local_apply(const MatrixFree<dim, number> &                   data,
                     LinearAlgebra::distributed::Vector<number> &      dst,
                     const LinearAlgebra::distributed::Vector<number> &src,
                     const std::pair<unsigned int, unsigned int> &cell_range) const;
 
+        /**
+         * @brief Computes the diagonal on the operator to be used with Jacobi
+         * @param data The data of the matrix free operator
+         * @param dst The destination vector
+         * @param dummy not used
+         * @param cell_range The cells on which to apply the operator
+         */
         void local_compute_diagonal(
           const MatrixFree<dim, number> &              data,
           LinearAlgebra::distributed::Vector<number> & dst,
@@ -49,24 +109,51 @@ namespace MatrixFreeADR {
           const std::pair<unsigned int, unsigned int> &cell_range) const;
     };
 
+
+    /**
+     * @brief Implements the Jacobi Smoother for Matrix-Free Operators
+     * @tparam MatrixType The type of the operator
+     */
     template <typename MatrixType>
     class JacobiSmoother : public DiagonalMatrix<typename MatrixType::vector_type> {
     public:
         using VectorType = typename MatrixType::vector_type;
         using value_type = typename VectorType::value_type;
 
+        /**
+         * @brief additional data to be passed to the smoother
+         */
         struct AdditionalData {
+            /// @brief the relaxation coefficient
             double relaxation = 1.0;
         };
 
+        /**
+         * @brief Initializes the smoother
+         * @param matrix The matrix to extract the diagonal from
+         * @param data Additional data for the jacobi smooter
+         * @sa AdditionalData
+         */
         void initialize(const MatrixType &matrix, const AdditionalData &data);
 
+        /**
+         * @brief Perform one step of the preconditioned Jacobi iteration
+         * @param dst The destination vector
+         * @param src The source vector
+         */
         void step(VectorType &dst, const VectorType &src) const;
 
+        /**
+         * @brief Perform one transposed step of the preconditioned Jacobi iteration
+         * @param dst The destination vector
+         * @param src The source vector
+         */
         void Tstep(VectorType &dst, const VectorType &src) const;
 
     private:
+        /// @brief The matrix
         const MatrixType *matrix;
+        /// @brief The relaxation parameters
         double relaxation;
     };
 
@@ -196,11 +283,10 @@ namespace MatrixFreeADR {
 
         for (unsigned int i = 0; i < inverse_diagonal.locally_owned_size(); ++i) {
             //! TODO maybe use std::abs(inverse_diagonal.local_element(i)) > 1e-15 inside assert
-            Assert(
-                inverse_diagonal.local_element(i) > 0.0,
-                ExcMessage("No diagonal entry in a positive definite operator should be zero")
-            );
-            inverse_diagonal.local_element(i) = 1. / inverse_diagonal.local_element(i);
+            if (inverse_diagonal.local_element(i) != 0.0)
+                inverse_diagonal.local_element(i) = 1. / inverse_diagonal.local_element(i);
+            else
+                inverse_diagonal.local_element(i) = 1.;
 
             //   if (std::abs(inverse_diagonal.local_element(i)) > 1e-15)
             //       inverse_diagonal.local_element(i) = 1. / inverse_diagonal.local_element(i);

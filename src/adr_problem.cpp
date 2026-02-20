@@ -20,13 +20,7 @@ namespace MatrixFreeADR {
     #endif
         , fe(degree_finite_element)
         , dof_handler(triangulation)
-        , setup_time(0.0)
         , pcout(std::cout, Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
-        , time_details(
-            std::cout,
-            false &&
-            Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0
-            )
     {}
 
 
@@ -59,17 +53,19 @@ namespace MatrixFreeADR {
         // Convert to MB for readability
         const double to_MB = 1.0 / (1024.0 * 1024.0);
 
-        LOG(fmt::format("{}Triangulation:        {}{:2.9f} MB",GREEN,YELLOW,(mem_tria * to_MB)));
-        LOG(fmt::format("{}DoFHandler:           {}{:2.9f} MB",GREEN,YELLOW,(mem_dofs * to_MB)));
-        LOG(fmt::format("{}Matrix-free operator: {}{:2.9f} MB",GREEN,YELLOW,(mem_mf_sys * to_MB)));
-        LOG(fmt::format("{}Multigrid matrices:   {}{:2.9f} MB",GREEN,YELLOW,(mem_mf_mg * to_MB)));
-        LOG(fmt::format("{}Vectors (Sol+RHS):    {}{:2.9f} MB",GREEN,YELLOW,(mem_vec * to_MB)));
+        LOG_FIT(fmt::format("{}Triangulation:        {}{:2.9f} MB",GREEN,YELLOW,(mem_tria * to_MB)),90);
+        LOG_FIT(fmt::format("{}DoFHandler:           {}{:2.9f} MB",GREEN,YELLOW,(mem_dofs * to_MB)),90);
+        LOG_FIT(fmt::format("{}Matrix-free operator: {}{:2.9f} MB",GREEN,YELLOW,(mem_mf_sys * to_MB)),90);
+        LOG_FIT(fmt::format("{}Multigrid matrices:   {}{:2.9f} MB",GREEN,YELLOW,(mem_mf_mg * to_MB)),90);
+        LOG_FIT(fmt::format("{}Vectors (Sol+RHS):    {}{:2.9f} MB",GREEN,YELLOW,(mem_vec * to_MB)),90);
         std::size_t  total = mem_tria + mem_dofs + mem_mf_sys + mem_mf_mg + mem_vec;
         LOG_FIT(fmt::format("{}{}TOTAL:                {}{:2.9f} MB",BOLD,RED,YELLOW,(total * to_MB)),94);
     }
 
     template<int dim>
-    void ADRProblem<dim>::print_memory_usage_to_file(const unsigned int refinement) const {
+    void ADRProblem<dim>::print_memory_usage_to_file(const int refinement) const {
+        if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) != 0) return;
+
         // Grid and DoFs (Base mesh connectivity)
         std::size_t mem_tria = triangulation.memory_consumption();
         std::size_t mem_dofs = dof_handler.memory_consumption();
@@ -91,10 +87,10 @@ namespace MatrixFreeADR {
         const double to_MB = 1.0 / (1024.0 * 1024.0);
 
         std::ofstream outfile;
-        if (!std::filesystem::exists(this->output_filename+".csv")) {
+        if (refinement == this->refinements[0]) {
             outfile.open(this->output_filename+".csv",std::ios_base::out);
             outfile << "# Matrix Free Memory Consumption" << "\n";
-            outfile << "Refinement,Triangulation,DoFHandler,Matrix-free operator,Multigrid matrices,Vectors,TOTAL" << "\n";
+            outfile << "Refinement,DoFs,Triangulation,DoFHandler,Matrix-free operator,Multigrid matrices,Vectors,TOTAL" << "\n";
 
         } else {
             outfile.open(this->output_filename+".csv",std::ios_base::app);
@@ -102,7 +98,7 @@ namespace MatrixFreeADR {
 
         std::size_t  total = mem_tria + mem_dofs + mem_mf_sys + mem_mf_mg + mem_vec;
 
-        outfile << refinement << "," << std::setprecision(10)
+        outfile << refinement << "," << dof_handler.n_dofs() << "," << std::setprecision(10)
                 << (mem_tria * to_MB) << ","
                 << (mem_dofs * to_MB) << ","
                 << (mem_mf_sys * to_MB) << ","
@@ -117,9 +113,6 @@ namespace MatrixFreeADR {
     void ADRProblem<dim>::setup_system(std::string param_filename) {
 
         this->init(param_filename);
-
-        Timer time;
-        setup_time = 0;
 
         system_matrix.clear();
         mg_matrices.clear_elements();
@@ -146,11 +139,6 @@ namespace MatrixFreeADR {
             constraints
         );
         constraints.close();
-
-        setup_time += time.wall_time();
-
-        // time_details << "Distribute DoFs & B.C.     (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << 's' << std::endl;
-        time.restart();
 
         // initialize matrix free system for level 0 of MG
         {
@@ -187,10 +175,6 @@ namespace MatrixFreeADR {
 
         system_matrix.initialize_dof_vector(solution);
         system_matrix.initialize_dof_vector(system_rhs);
-
-        setup_time += time.wall_time();
-        // time_details << "Setup matrix-free system   (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << 's' << std::endl;
-        time.restart();
 
         const unsigned int nlevels = triangulation.n_global_levels();
         mg_matrices.resize(0, nlevels - 1);
@@ -236,15 +220,11 @@ namespace MatrixFreeADR {
 
             mg_matrices[level].evaluate_coefficients(this->diffusion_c,this->advection_c,this->reaction_c);
         }
-        setup_time += time.wall_time();
-        // time_details << "Setup matrix-free levels   (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << 's' << std::endl;
     }
 
 
     template <int dim>
     void ADRProblem<dim>::assemble_rhs() {
-        Timer time;
-
         solution = 0;
         constraints.distribute(solution);
         solution.update_ghost_values();
@@ -310,20 +290,14 @@ namespace MatrixFreeADR {
                 phi_face.distribute_local_to_global(system_rhs);
             }
         }
-
         system_rhs.compress(VectorOperation::add);
-
-        setup_time += time.wall_time();
-        // time_details << "Assemble right hand side   (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << 's' << std::endl;
     }
 
 
     template <int dim>
     void ADRProblem<dim>::solve() {
-        Timer time;
         MGTransferMatrixFree<dim, float> mg_transfer(mg_constrained_dofs);
         mg_transfer.build(dof_handler);
-        setup_time += time.wall_time();
 
         using SmootherType = JacobiSmoother<LevelMatrixType>;
         using VectorTypeMG = LinearAlgebra::distributed::Vector<float>;
@@ -365,10 +339,6 @@ namespace MatrixFreeADR {
 
         SolverControl solver_control(this->max_iters, this->epsilon * system_rhs.l2_norm());
 
-        setup_time += time.wall_time(); // finish tracking setup time
-        time.reset(); // tracking solve time
-        time.start();
-
         // apply Dirichlet BCs to the initial guess
         //constraints.distribute(solution);
 
@@ -391,20 +361,16 @@ namespace MatrixFreeADR {
             pcout << "Solver failed: " << e.what() << std::endl;
         }
         constraints.distribute(solution);
-
-        // pcout << "Time solve (" << solver_control.last_step() << " iterations)" << (solver_control.last_step() < 10 ? "  " : " ") << "(CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << "s\n";
     }
 
 
     template <int dim>
-    void ADRProblem<dim>::output_results(const unsigned int cycle) const {
-        Timer time;
-
+    void ADRProblem<dim>::output_results(const int cycle) const {
         // do not output for big meshes
-        if (triangulation.n_global_active_cells() > MAX_OUTPUT_MESH_ELEMENTS) {
-            pcout << "File too big" << std::endl;
-            return;
-        }
+        // if (triangulation.n_global_active_cells() > MAX_OUTPUT_MESH_ELEMENTS) {
+        //     pcout << "File too big" << std::endl;
+        //     return;
+        // }
 
         DataOut<dim> data_out;
 
@@ -418,7 +384,6 @@ namespace MatrixFreeADR {
         data_out.set_flags(flags);
         data_out.write_vtu_with_pvtu_record("./", this->output_filename, cycle, MPI_COMM_WORLD, 1);
 
-        // pcout << "Time write output          (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << "s\n";
     }
 
 
@@ -432,19 +397,51 @@ namespace MatrixFreeADR {
         //         << Utilities::System::get_current_vectorization_level() << ')'
         //         << std::endl;
 
+
         this->init(param_filename);
+
+        this->output_filename += "_mf";
+
+        std::ofstream outfile;
+        if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)outfile.open(this->output_filename+"_time.csv",std::ios_base::out);
+        if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)outfile << "# Matrix Free Time Details" << "\n";
+        if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)outfile << "Refinement,Setup,Assembly,Solve,TOTAL" << "\n";
+
         for (auto ref : this->refinements) {
             LOG_VAR("Refinement", ref);
+            if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) outfile << ref << ",";
             triangulation.clear(); //clear previous data to allow re-initialization
             GridGenerator::hyper_cube(triangulation, 0., 1., true);
             triangulation.refine_global(ref);
 
+            Timer timer;
+            double total_time = 0.0;
+
+            timer.start();
             setup_system(param_filename);
+            timer.stop();
+            total_time += timer.wall_time();
+            if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) outfile << timer.wall_time() << ",";
+
+            timer.start();
             assemble_rhs();
+            timer.stop();
+            total_time += timer.wall_time();
+            if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) outfile << timer.wall_time() << ",";
+
+            timer.start();
             solve();
+            timer.stop();
+            total_time += timer.wall_time();
+            if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) outfile << timer.wall_time() << ",";
+
+            if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) outfile << total_time << std::endl;
+
             print_memory_usage();
             print_memory_usage_to_file(ref);
             output_results(ref);
         }
     }
+
+
 }

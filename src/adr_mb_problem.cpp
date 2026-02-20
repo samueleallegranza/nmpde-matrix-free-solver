@@ -19,13 +19,7 @@ namespace MatrixBasedADR {
     #endif
         , fe(degree_finite_element)
         , dof_handler(triangulation)
-        , setup_time(0.0)
         , pcout(std::cout, Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
-        , time_details(
-            std::cout,
-            false &&
-            Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0
-            )
     {}
 
 
@@ -53,17 +47,19 @@ namespace MatrixBasedADR {
         // Convert to MB for readability
         const double to_MB = 1.0 / (1024.0 * 1024.0);
 
-        LOG(fmt::format("{}Triangulation:        {}{:2.9f} MB",GREEN,YELLOW,(mem_tria * to_MB)));
-        LOG(fmt::format("{}DoFHandler:           {}{:2.9f} MB",GREEN,YELLOW,(mem_dofs * to_MB)));
-        LOG(fmt::format("{}Matrix:               {}{:2.9f} MB",GREEN,YELLOW,(mem_mb_sys * to_MB)));
-        LOG(fmt::format("{}Multigrid matrices:   {}{:2.9f} MB",GREEN,YELLOW,(mem_mb_mg * to_MB)));
-        LOG(fmt::format("{}Vectors (Sol+RHS):    {}{:2.9f} MB",GREEN,YELLOW,(mem_vec * to_MB)));
+        LOG_FIT(fmt::format("{}Triangulation:        {}{:2.9f} MB",GREEN,YELLOW,(mem_tria * to_MB)),90);
+        LOG_FIT(fmt::format("{}DoFHandler:           {}{:2.9f} MB",GREEN,YELLOW,(mem_dofs * to_MB)),90);
+        LOG_FIT(fmt::format("{}Matrix:               {}{:2.9f} MB",GREEN,YELLOW,(mem_mb_sys * to_MB)),90);
+        LOG_FIT(fmt::format("{}Multigrid matrices:   {}{:2.9f} MB",GREEN,YELLOW,(mem_mb_mg * to_MB)),90);
+        LOG_FIT(fmt::format("{}Vectors (Sol+RHS):    {}{:2.9f} MB",GREEN,YELLOW,(mem_vec * to_MB)),90);
         std::size_t  total = mem_tria + mem_dofs + mem_mb_sys + mem_mb_mg + mem_vec;
         LOG_FIT(fmt::format("{}{}TOTAL:                {}{:2.9f} MB",BOLD,RED,YELLOW,(total * to_MB)),94);
     }
 
     template<int dim>
     void ADRMBProblem<dim>::print_memory_usage_to_file(const unsigned int refinement) const {
+        if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) != 0) return;
+
         // Grid and DoFs (Base mesh connectivity)
         std::size_t mem_tria = triangulation.memory_consumption();
         std::size_t mem_dofs = dof_handler.memory_consumption();
@@ -88,7 +84,7 @@ namespace MatrixBasedADR {
         if (!std::filesystem::exists(this->output_filename+".csv")) {
             outfile.open(this->output_filename+".csv",std::ios_base::out);
             outfile << "# Matrix Based Memory Consumption" << "\n";
-            outfile << "Refinement,Triangulation,DoFHandler,Matrix,Multigrid matrices,Vectors,TOTAL" << "\n";
+            outfile << "Refinement,Dofs,Triangulation,DoFHandler,Matrix,Multigrid matrices,Vectors,TOTAL" << "\n";
 
         } else {
             outfile.open(this->output_filename+".csv",std::ios_base::app);
@@ -97,7 +93,7 @@ namespace MatrixBasedADR {
 
         std::size_t  total = mem_tria + mem_dofs + mem_mb_sys + mem_mb_mg + mem_vec;
 
-        outfile << refinement << "," << std::setprecision(10)
+        outfile << refinement << "," << dof_handler.n_dofs() << "," << std::setprecision(10)
                 << (mem_tria * to_MB) << ","
                 << (mem_dofs * to_MB) << ","
                 << (mem_mb_sys * to_MB) << ","
@@ -179,9 +175,6 @@ namespace MatrixBasedADR {
     void ADRMBProblem<dim>::setup_system(std::string param_filename) {
         this->init(param_filename);
 
-        Timer time;
-        setup_time = 0;
-
         dof_handler.distribute_dofs(fe);
         dof_handler.distribute_mg_dofs();
 
@@ -204,9 +197,6 @@ namespace MatrixBasedADR {
         );
         constraints.close();
 
-        // time_details << "Distribute DoFs & B.C.     (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << 's' << std::endl;
-        time.restart();
-
         DynamicSparsityPattern dsp_level_0(dof_handler.n_dofs(), dof_handler.n_dofs());
         DoFTools::make_sparsity_pattern(dof_handler, dsp_level_0, constraints);
         sparsity_pattern.copy_from(dsp_level_0);
@@ -216,10 +206,6 @@ namespace MatrixBasedADR {
         mg_constrained_dofs.clear();
         mg_constrained_dofs.initialize(dof_handler);
         mg_constrained_dofs.make_zero_boundary_constraints(dof_handler, dirichlet_boundary_ids);
-
-        setup_time += time.wall_time();
-        // time_details << "Setup matrix-based system   (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << 's' << std::endl;
-        time.restart();
 
         const unsigned int n_levels = triangulation.n_levels();
 
@@ -245,9 +231,6 @@ namespace MatrixBasedADR {
             mg_interface_sparsity_patterns[level].copy_from(dsp_level_interface);
             mg_interface_matrices[level].reinit(mg_interface_sparsity_patterns[level]);
         }
-
-        setup_time += time.wall_time();
-        // time_details << "Setup matrix-based levels   (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << 's' << std::endl;
     }
 
 
@@ -391,8 +374,6 @@ namespace MatrixBasedADR {
     template <int dim>
     void ADRMBProblem<dim>::solve() {
 
-        Timer time;
-
         MGTransferPrebuilt<Vector<double>> mg_transfer(mg_constrained_dofs);
         mg_transfer.build(dof_handler);
 
@@ -424,12 +405,6 @@ namespace MatrixBasedADR {
 
         PreconditionMG<dim, Vector<double>, MGTransferPrebuilt<Vector<double>>> preconditioner(dof_handler, mg, mg_transfer);
 
-        // time_details << "MG build smoother time     (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << "s\n";
-        // pcout << "Total setup time               (wall) " << setup_time << "s\n";
-
-        time.reset();
-        time.start();
-
         SolverControl solver_control(this->max_iters, this->epsilon * system_rhs.l2_norm());
         solution = 0;
 
@@ -453,19 +428,17 @@ namespace MatrixBasedADR {
 
         constraints.distribute(solution);
 
-        // pcout << "Time solve (" << solver_control.last_step() << " iterations)" << (solver_control.last_step() < 10 ? "  " : " ") << "(CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << "s\n";
-      }
+    }
 
 
     template <int dim>
     void ADRMBProblem<dim>::output_results(const unsigned int cycle) const {
-        Timer time;
 
         // do not output for big meshes
-        if (triangulation.n_global_active_cells() > MAX_OUTPUT_MESH_ELEMENTS) {
-            pcout << "File too big" << std::endl;
-            return;
-        }
+        // if (triangulation.n_global_active_cells() > MAX_OUTPUT_MESH_ELEMENTS) {
+        //     pcout << "File too big" << std::endl;
+        //     return;
+        // }
 
         DataOut<dim> data_out;
 
@@ -479,7 +452,6 @@ namespace MatrixBasedADR {
         data_out.set_flags(flags);
         data_out.write_vtu_with_pvtu_record("./", this->output_filename, cycle, MPI_COMM_WORLD, 1);
 
-        // pcout << "Time write output          (CPU/wall) " << time.cpu_time() << "s/" << time.wall_time() << "s\n";
     }
 
 
@@ -494,16 +466,49 @@ namespace MatrixBasedADR {
         //         << std::endl;
 
         this->init(param_filename);
+
+        this->output_filename += "_mb";
+
+        std::ofstream outfile;
+        if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) outfile.open(this->output_filename+"_time.csv",std::ios_base::out);
+        if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) outfile << "# Matrix Free Time Details" << "\n";
+        if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) outfile << "Refinement,Setup,Assembly,Solve,TOTAL" << "\n";
+
         for (auto ref : this->refinements) {
             LOG_VAR("Refinement", ref);
+            if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) outfile << ref << ",";
             triangulation.clear(); //clear previous data to allow re-initialization
             GridGenerator::hyper_cube(triangulation, 0., 1., true);
             triangulation.refine_global(ref);
 
+
+            Timer timer;
+            double total_time = 0.0;
+
+            LOG("Setup")
+            timer.start();
             setup_system(param_filename);
+            timer.stop();
+            total_time += timer.wall_time();
+            if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) outfile << timer.wall_time() << ",";
+
+            LOG("Assemble")
+            timer.start();
             assemble_system();
             assemble_multigrid();
+            timer.stop();
+            total_time += timer.wall_time();
+            if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) outfile << timer.wall_time() << ",";
+
+            LOG("Solve")
+            timer.start();
             solve();
+            timer.stop();
+            total_time += timer.wall_time();
+            if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) outfile << timer.wall_time() << ",";
+
+            if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) outfile << total_time << std::endl;
+
             print_memory_usage();
             print_memory_usage_to_file(ref);
             output_results(ref);

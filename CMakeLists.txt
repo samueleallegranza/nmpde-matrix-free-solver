@@ -63,6 +63,13 @@ add_executable(matrix_free_test
 deal_ii_setup_target(matrix_free_test)
 target_link_libraries(matrix_free_test prm_handler matrix_free_adr_lib fmt::fmt)
 
+add_executable(matrix_free_test_3d
+        tests/matrix_free_adr_3d.cpp
+        include/general_definitions.hpp
+)
+deal_ii_setup_target(matrix_free_test_3d)
+target_link_libraries(matrix_free_test_3d prm_handler matrix_free_adr_lib fmt::fmt)
+
 
 add_executable(matrix_based_test
         tests/matrix_based_adr.cpp
