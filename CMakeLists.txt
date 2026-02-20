@@ -1,30 +1,95 @@
+#┌───────────────────────────────────────────────────────────────┐
+#│                                                               │
+#│   ▄▄▄  ▄    ▄        █             ▄        ▀             ▄   │
+#│ ▄▀   ▀ ██  ██  ▄▄▄   █   ▄   ▄▄▄   █      ▄▄▄     ▄▄▄   ▄▄█▄▄ │
+#│ █      █ ██ █ ▀   █  █ ▄▀   █▀  █  █        █    █   ▀    █   │
+#│ █      █ ▀▀ █ ▄▀▀▀█  █▀█    █▀▀▀▀  █        █     ▀▀▀▄    █   │
+#│  ▀▄▄▄▀ █    █ ▀▄▄▀█  █  ▀▄  ▀█▄▄▀  █▄▄▄▄▄ ▄▄█▄▄  ▀▄▄▄▀    ▀▄▄ │
+#│                                                               │
+#│                                                               │
+#└───────────────────────────────────────────────────────────────┘
+
 cmake_minimum_required(VERSION 3.12.0)
 project(Project7_MatrixFree LANGUAGES CXX C)
 
 include(cmake-common.cmake)
 
-# Add the include directory to the search path
 include_directories(include)
+set(dir ${CMAKE_CURRENT_SOURCE_DIR})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${dir}/lib")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${dir}/lib")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${dir}/bin")
 
-# Collect files
-file(GLOB_RECURSE SOURCES "src/*.cpp")
-file(GLOB_RECURSE HEADERS "include/*.h")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter -Wno-float-conversion -frounding-math -O3 -msse")
 
-# Remove main.cpp from SOURCES to create a library from the rest
-list(FILTER SOURCES EXCLUDE REGEX "main\\.cpp$")
+find_package(fmt)
 
-# Create a library for the core functionality
-add_library(matrix_free_core ${SOURCES} ${HEADERS})
-deal_ii_setup_target(matrix_free_core)
+#┌───────────────────────────────────────────────────────────────┐
+#│                                                               │
+#│ ▀▀█      ▀    █                             ▀                 │
+#│   █    ▄▄▄    █▄▄▄    ▄ ▄▄   ▄▄▄    ▄ ▄▄  ▄▄▄     ▄▄▄    ▄▄▄  │
+#│   █      █    █▀ ▀█   █▀  ▀ ▀   █   █▀  ▀   █    █▀  █  █   ▀ │
+#│   █      █    █   █   █     ▄▀▀▀█   █       █    █▀▀▀▀   ▀▀▀▄ │
+#│   ▀▄▄  ▄▄█▄▄  ██▄█▀   █     ▀▄▄▀█   █     ▄▄█▄▄  ▀█▄▄▀  ▀▄▄▄▀ │
+#│                                                               │
+#│                                                               │
+#└───────────────────────────────────────────────────────────────┘
+add_library(prm_handler include/prm_handler.hpp src/adr_prm_handler.cpp)
+deal_ii_setup_target(prm_handler)
+target_link_libraries(prm_handler fmt::fmt)
 
-# Define the target first
-add_executable(matrix_free src/main.cpp)
+add_library(matrix_based_adr_lib include/adr_mb_problem.hpp src/adr_mb_problem.cpp)
+deal_ii_setup_target(matrix_based_adr_lib)
+target_link_libraries(matrix_based_adr_lib fmt::fmt prm_handler)
 
-# Setup the target with deal.II flags
-deal_ii_setup_target(matrix_free)
+add_library(matrix_free_adr_lib include/adr_problem.hpp src/adr_problem.cpp include/adr_operator.hpp)
+deal_ii_setup_target(matrix_free_adr_lib)
+target_link_libraries(matrix_free_adr_lib fmt::fmt prm_handler)
 
-# Link the libraries
-target_link_libraries(matrix_free matrix_free_core ${DEAL_II_LIBRARIES})
+#┌─────────────────────────────────────────────────────────────────────────────┐
+#│                                                                             │
+#│ ▄▄▄▄▄▄                               ▄           █      ▀▀█                 │
+#│ █      ▄   ▄   ▄▄▄    ▄▄▄   ▄   ▄  ▄▄█▄▄   ▄▄▄   █▄▄▄     █     ▄▄▄    ▄▄▄  │
+#│ █▄▄▄▄▄  █▄█   █▀  █  █▀  ▀  █   █    █    ▀   █  █▀ ▀█    █    █▀  █  █   ▀ │
+#│ █       ▄█▄   █▀▀▀▀  █      █   █    █    ▄▀▀▀█  █   █    █    █▀▀▀▀   ▀▀▀▄ │
+#│ █▄▄▄▄▄ ▄▀ ▀▄  ▀█▄▄▀  ▀█▄▄▀  ▀▄▄▀█    ▀▄▄  ▀▄▄▀█  ██▄█▀    ▀▄▄  ▀█▄▄▀  ▀▄▄▄▀ │
+#│                                                                             │
+#│                                                                             │
+#└─────────────────────────────────────────────────────────────────────────────┘
+add_executable(matrix_free_test
+        tests/matrix_free_adr.cpp
+        include/general_definitions.hpp
+)
+deal_ii_setup_target(matrix_free_test)
+target_link_libraries(matrix_free_test prm_handler matrix_free_adr_lib fmt::fmt)
 
-add_subdirectory(tests)
+add_executable(matrix_free_test_3d
+        tests/matrix_free_adr_3d.cpp
+        include/general_definitions.hpp
+)
+deal_ii_setup_target(matrix_free_test_3d)
+target_link_libraries(matrix_free_test_3d prm_handler matrix_free_adr_lib fmt::fmt)
 
+
+add_executable(matrix_based_test
+        tests/matrix_based_adr.cpp
+        include/general_definitions.hpp
+)
+deal_ii_setup_target(matrix_based_test)
+target_link_libraries(matrix_based_test prm_handler matrix_based_adr_lib fmt::fmt)
+
+#┌─────────────────────────────────────────────────┐
+#│                                                 │
+#│ ▄▄▄▄                                            │
+#│ █   ▀▄  ▄▄▄   ▄   ▄  ▄   ▄   ▄▄▄▄   ▄▄▄   ▄ ▄▄  │
+#│ █    █ █▀ ▀█   █▄█   ▀▄ ▄▀  █▀ ▀█  █▀  █  █▀  █ │
+#│ █    █ █   █   ▄█▄    █▄█   █   █  █▀▀▀▀  █   █ │
+#│ █▄▄▄▀  ▀█▄█▀  ▄▀ ▀▄   ▀█    ▀█▄▀█  ▀█▄▄▀  █   █ │
+#│                       ▄▀     ▄  █               │
+#│                      ▀▀       ▀▀                │
+#└─────────────────────────────────────────────────┘
+find_package(Doxygen)
+if(Doxygen_FOUND)
+    message(STATUS "Doxygen found")
+    doxygen_add_docs(docs ${dir} WORKING_DIRECTORY ${dir} CONFIG_FILE "${dir}/docs/Doxyfile")
+endif()

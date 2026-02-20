@@ -1,40 +1,21 @@
-## C++ #########################################################################
+# Build
+build/
+bin/
+lib/
 
-# Prerequisites
-*.d
+# deal.II / ParaView output
+*.vtu
+*.pvtu
+*.vtk
+*.pvtk
+*.pvd
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+results/
+images/
 
-# Precompiled Headers
-*.gch
-*.pch
+csv/
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-
-build/*
-
-results/*.vtu
-results/*.pvtu
 .vscode/
+.idea/
+
+docs/Doxygen/*

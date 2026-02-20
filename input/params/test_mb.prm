@@ -1,0 +1,57 @@
+# Listing of Parameters
+# ---------------------
+# The refinement levels to test
+set Refinements = 4,6,8,10
+
+
+subsection Files
+  # A .vtk file to save the solution to
+  set Output file = solution_mb
+end
+
+
+subsection Functions
+  # Advection x coefficient
+  set Advection x    = 0.0
+
+  # Advection y coefficient
+  set Advection y    = 0.0
+
+  # Advection z coefficient
+  set Advection z    = 0.0
+
+  # Diffusion coefficient
+  set Diffusion      = 1.0
+
+  # Dirichlet Boundary Condition
+  set Dirichlet BC   = sin(pi*y), sin(pi*y), 0.0, 0.0
+
+  # The Tag of the boundaries on which to apply the Dirichlet condition
+  set Dirichlet Tags = 0,1,2,3
+
+  # Force term
+  set Force          = (1 + 5 * pi * pi) * cos(2*pi*x) * sin(pi*y)
+
+  # Neumann Boundary Condition
+  set Neumann BC     =
+
+  # The Tag of the boundaries on which to apply the Neumann condition
+  set Neumann Tags   =
+
+  # Reaction coefficient
+  set Reaction       = 1.0
+end
+
+
+subsection Solver
+  # Max number of iters for linear solver
+  set Max iters      = 500
+
+  # The solver to use
+  set Solver type    = CG
+
+  # Tolerance for the linear solver
+  set Tolerance      = 1.0e-16
+end
+
+
